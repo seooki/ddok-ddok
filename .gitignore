@@ -1,0 +1,10 @@
+.gradle/
+.kotlin/
+.idea/
+build/
+*.iml
+local.properties
+# 서명 키와 비밀번호는 절대 저장소에 넣지 않는다.
+keystore.properties
+keystore/
+out/
