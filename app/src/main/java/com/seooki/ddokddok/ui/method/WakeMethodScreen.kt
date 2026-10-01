@@ -110,6 +110,12 @@ fun WakeMethodScreen(onBack: () -> Unit) {
                             onCheckedChange = { on -> repository.update { it.copy(fallbackToWakeLock = on) } },
                         )
                         SettingSwitchRow(
+                            title = stringResource(R.string.method_rewake_title),
+                            summary = stringResource(R.string.method_rewake_body),
+                            checked = settings.rewakeWhenOthersWake,
+                            onCheckedChange = { on -> repository.update { it.copy(rewakeWhenOthersWake = on) } },
+                        )
+                        SettingSwitchRow(
                             title = stringResource(R.string.method_avoid_dozing_title),
                             summary = stringResource(R.string.method_avoid_dozing_body),
                             checked = settings.avoidMenuKeyWhenDozing,
@@ -131,7 +137,27 @@ fun WakeMethodScreen(onBack: () -> Unit) {
                     onOpenAccessibility = { SystemSetup.openAccessibility(context) },
                 )
             }
+            item { PopupTip() }
             item { FaceUnlockTip(onOpenSecurity = { SystemSetup.openSecuritySettings(context) }) }
+        }
+    }
+}
+
+/**
+ * 삼성 알림 팝업이 화면이 꺼져 있을 때도 뜨면 똑똑보다 먼저 화면을 밝힌다. 똑똑이 그 뒤에 다시 켜서 얼굴 인식은 되지만,
+ * 그 옵션을 끄면 알림이 오자마자 전원 버튼처럼 켜진다.
+ */
+@Composable
+private fun PopupTip() {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(stringResource(R.string.method_popup_tip_title), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.method_popup_tip_body), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

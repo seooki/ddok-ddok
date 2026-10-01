@@ -4,12 +4,14 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.seooki.ddokddok.R
+import com.seooki.ddokddok.core.DisplayKind
 import com.seooki.ddokddok.core.FailReason
 import com.seooki.ddokddok.core.SkipReason
 import com.seooki.ddokddok.core.TestFollowUp
 import com.seooki.ddokddok.core.TestResult
 import com.seooki.ddokddok.core.WakeMethod
 import com.seooki.ddokddok.data.EventOutcome
+import com.seooki.ddokddok.data.WakeDetail
 import com.seooki.ddokddok.data.WakeEvent
 import java.time.Instant
 import java.time.LocalDate
@@ -17,6 +19,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.Locale
 
 @StringRes
 fun WakeMethod.titleRes(): Int = when (this) {
@@ -50,6 +53,7 @@ fun SkipReason.labelRes(): Int = when (this) {
     SkipReason.REPOST -> R.string.skip_repost
     SkipReason.SUSPENDED_APP -> R.string.skip_suspended_app
     SkipReason.APP_COOLDOWN -> R.string.skip_app_cooldown
+    SkipReason.WOKEN_BY_OTHER -> R.string.skip_woken_by_other
     SkipReason.GROUP_SILENT -> R.string.skip_group_silent
     SkipReason.ALERT_ONCE_UPDATE -> R.string.skip_alert_once_update
     SkipReason.BUSY -> R.string.skip_busy
@@ -75,15 +79,36 @@ fun FailReason.labelRes(): Int = when (this) {
 }
 
 @Composable
-fun outcomeText(outcome: EventOutcome): String = when (outcome) {
-    is EventOutcome.Woke -> if (outcome.usedFallback) {
-        stringResource(R.string.history_woke_fallback)
-    } else {
-        stringResource(R.string.history_woke, stringResource(outcome.method.titleRes()))
+fun outcomeText(outcome: EventOutcome, detail: WakeDetail? = null): String {
+    val text = when (outcome) {
+        is EventOutcome.Woke -> if (outcome.usedFallback) {
+            stringResource(R.string.history_woke_fallback)
+        } else {
+            stringResource(R.string.history_woke, stringResource(outcome.method.titleRes()))
+        }
+        is EventOutcome.Skipped -> stringResource(R.string.history_skipped, stringResource(outcome.reason.labelRes()))
+        is EventOutcome.Failed -> stringResource(R.string.history_failed, stringResource(outcome.reason.labelRes()))
     }
-    is EventOutcome.Skipped -> stringResource(R.string.history_skipped, stringResource(outcome.reason.labelRes()))
-    is EventOutcome.Failed -> stringResource(R.string.history_failed, stringResource(outcome.reason.labelRes()))
+    val situation = detail?.let { detailParts(it) }.orEmpty()
+    return (listOf(text) + situation).joinToString(" · ")
 }
+
+/** 켤 때의 상황 중 눈여겨볼 것만 고른다. 화면이 완전히 꺼져 있었고 기다리지 않았으면 아무것도 붙이지 않는다. */
+@Composable
+private fun detailParts(detail: WakeDetail): List<String> {
+    val parts = mutableListOf<String>()
+    if (detail.rewoke) parts += stringResource(R.string.detail_rewoke)
+    if (detail.waitedMs > 0) parts += stringResource(R.string.detail_waited, formatSeconds(detail.waitedMs))
+    when (detail.display) {
+        DisplayKind.DOZE -> parts += stringResource(R.string.detail_doze)
+        DisplayKind.ON -> parts += stringResource(R.string.detail_display_on)
+        DisplayKind.OFF, DisplayKind.UNKNOWN -> Unit
+    }
+    return parts
+}
+
+/** 1.2처럼 소수 한 자리 초. */
+fun formatSeconds(ms: Long): String = String.format(Locale.getDefault(), "%.1f", ms / 1_000.0)
 
 /** "오후 11:00"처럼 기기 언어에 맞춘 시각. */
 fun formatMinuteOfDay(minuteOfDay: Int): String =

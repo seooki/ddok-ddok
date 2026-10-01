@@ -3,9 +3,6 @@ package com.seooki.ddokddok.data
 import android.util.AtomicFile
 import androidx.core.util.readText
 import androidx.core.util.writeText
-import com.seooki.ddokddok.core.FailReason
-import com.seooki.ddokddok.core.SkipReason
-import com.seooki.ddokddok.core.WakeMethod
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,39 +53,17 @@ class WakeEventLog(
     }
 
     private fun read(): List<WakeEvent> = try {
-        atomicFile.readText().lineSequence().mapNotNull(::decode).toList()
+        atomicFile.readText().lineSequence().mapNotNull(WakeEventCodec::decode).toList()
     } catch (e: IOException) {
         emptyList()
     }
 
     private fun write(events: List<WakeEvent>) {
         try {
-            atomicFile.writeText(events.joinToString("\n", transform = ::encode))
+            atomicFile.writeText(events.joinToString("\n", transform = WakeEventCodec::encode))
         } catch (e: IOException) {
             // 기록을 못 남겨도 화면 켜기에는 영향이 없다. 다음 기록 때 다시 저장한다.
         }
-    }
-
-    private fun encode(event: WakeEvent): String {
-        val outcome = when (val o = event.outcome) {
-            is EventOutcome.Woke -> "W\t${o.method.key}\t${if (o.usedFallback) 1 else 0}"
-            is EventOutcome.Skipped -> "S\t${o.reason.name}\t0"
-            is EventOutcome.Failed -> "F\t${o.reason.name}\t0"
-        }
-        return "${event.timeMillis}\t${event.packageName}\t$outcome"
-    }
-
-    private fun decode(line: String): WakeEvent? {
-        val parts = line.split('\t')
-        if (parts.size != 5) return null
-        val time = parts[0].toLongOrNull() ?: return null
-        val outcome = when (parts[2]) {
-            "W" -> WakeMethod.fromKey(parts[3])?.let { EventOutcome.Woke(it, parts[4] == "1") }
-            "S" -> SkipReason.entries.firstOrNull { it.name == parts[3] }?.let { EventOutcome.Skipped(it) }
-            "F" -> FailReason.entries.firstOrNull { it.name == parts[3] }?.let { EventOutcome.Failed(it) }
-            else -> null
-        } ?: return null
-        return WakeEvent(time, parts[1], outcome)
     }
 
     companion object {

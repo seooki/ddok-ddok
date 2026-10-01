@@ -4,7 +4,7 @@
 
 ## 설치 파일 받기
 
-[ddokddok-0.1.2.apk 내려받기](https://github.com/seooki/ddok-ddok/raw/main/release/ddokddok-0.1.2.apk) (Android 12 이상, 전원 버튼 방식은 Android 16 이상)
+[ddokddok-0.1.3.apk 내려받기](https://github.com/seooki/ddok-ddok/raw/main/release/ddokddok-0.1.3.apk) (Android 12 이상, 전원 버튼 방식은 Android 16 이상)
 
 같은 파일이 [Releases](https://github.com/seooki/ddok-ddok/releases/latest)에도 있다. Obtainium 앱에 이 저장소 주소(`https://github.com/seooki/ddok-ddok`)를 추가해 두면 새 버전이 나왔을 때 알려 주고 바로 설치할 수 있다.
 
@@ -12,7 +12,14 @@
 2. 앱의 '시작하기' 안내대로 알림 접근과 접근성 서비스를 켠다. 막히면 앱 정보 > 오른쪽 위 ⋮ > '제한된 설정 허용'을 누른 뒤 다시 켠다.
 3. '화면 켜기 테스트'를 AOD를 끈 상태와 켠 상태에서 한 번씩 해 본다.
 
-이전 버전을 쓰고 있으면 지우지 말고 그대로 덮어 설치한다. 같은 키로 서명되어 설정·기록·권한이 그대로 남는다. 0.1.2에서 새로 생긴 '문제가 생기면 알림 받기'만 허용해 준다.
+이전 버전을 쓰고 있으면 지우지 말고 그대로 덮어 설치한다. 같은 키로 서명되어 설정·기록·권한이 그대로 남는다. 0.1.1에서 올라오면 0.1.2에서 새로 생긴 '문제가 생기면 알림 받기'만 허용해 준다.
+
+### 0.1.3에서 달라진 점
+
+- 알림과 함께 다른 기능이 화면을 먼저 켜면(삼성 알림 팝업의 '화면이 꺼져 있을 때에도 보이기', 스스로 화면을 켜는 앱) 그 화면은 '앱이 켬'이라 얼굴 인식이 시작되지 않았다. 이제 그 화면을 끄고 전원 버튼 방식으로 다시 켠다(화면이 한 번 깜빡임, 화면 켜는 방식에서 끌 수 있음).
+- 알림 팝업·엣지 라이팅처럼 알림 때문에 화면이 잠깐 밝아져 있으면 메뉴 키가 그쪽으로 가서 전원 버튼처럼 켜지지 않는다. 이때는 밝아진 화면이 사라질 때까지(최대 6초) 기다렸다가 켠다.
+- AOD·알림 팝업이 떠 있을 때의 실패로는 기본 방식으로 자동 전환하지 않는다.
+- 최근 기록과 진단 정보에 켤 때의 상황(AOD 상태였는지, 기다린 시간, 먼저 켜진 화면을 다시 켰는지, 다른 기능이 먼저 켰는지)을 남긴다.
 
 ### 0.1.2에서 달라진 점
 
@@ -38,7 +45,12 @@
 - **전원 버튼 방식** (Android 16+, 기본값): 접근성 서비스의 `performGlobalAction(GLOBAL_ACTION_MENU)`. 화면이 꺼져 있으면 메뉴 키가 '화면을 켜는 키'로 처리되어 `WAKE_REASON_WAKE_KEY`로 기록된다. AOSP 잠금화면은 이 이유를 전원 버튼과 같은 목록(`config_face_auth_wake_up_triggers`)에 두고 얼굴 인식을 시작한다.
 - **기본 방식** (대체): `WakeLock` + `ACQUIRE_CAUSES_WAKEUP`. `WAKE_REASON_APPLICATION`으로 기록되어 얼굴 인식은 시작되지 않는다. Glimpse Notifications 같은 기존 앱이 이 방식이다.
 
-켜지 않는 경우: 쉬는 중, 화면이 켜져 있음, 진행 중·무음 알림(Android 16의 무음 표시 포함), 시스템이 기존 알림을 다시 보낸 것, 끈 앱, 사용이 일시정지된 앱, 방해 금지 모드, 소리 안 내는 묶음 알림, '한 번만 알림' 업데이트, 전화·알람·전체 화면 알림(시스템이 직접 켬), 잠금화면에 숨긴 알림, 통화 중, 방해하지 않을 시간, 간격(기본 5초), 같은 앱 간격(기본 없음), 엎어 둠(가속도 센서), 주머니 속(근접·조도 센서, 기본 꺼짐).
+다른 기능과 겹칠 때(`wake/WakeController`, `core/ForeignWake`, `core/DisplayWait`):
+
+- 알림이 게시되고 1.5초 안에 다른 쪽이 화면을 켰고 잠금이 그대로면, 그 화면을 접근성 서비스로 끄고(`GLOBAL_ACTION_LOCK_SCREEN`) 다 꺼지면 메뉴 키로 다시 켠다. 똑똑이 방금 켠 화면이나 사람이 먼저 켜 둔 화면은 건드리지 않는다.
+- 화면이 완전히 꺼지지 않은 상태(AOD·알림 팝업)에서는 메뉴 키가 잠금화면이나 팝업으로 전달된다(`PhoneWindowManager`). 알림 때문에 방금 밝아진 것이면 꺼질 때까지 기다리고, AOD를 늘 켜 두어 원래 밝던 것이면 바로 보낸다.
+
+켜지 않는 경우: 쉬는 중, 화면이 켜져 있음(다른 기능이 알림과 함께 켠 화면은 다시 켬), 진행 중·무음 알림(Android 16의 무음 표시 포함), 시스템이 기존 알림을 다시 보낸 것, 끈 앱, 사용이 일시정지된 앱, 방해 금지 모드, 소리 안 내는 묶음 알림, '한 번만 알림' 업데이트, 전화·알람·전체 화면 알림(시스템이 직접 켬), 잠금화면에 숨긴 알림, 통화 중, 방해하지 않을 시간, 간격(기본 5초), 같은 앱 간격(기본 없음), 엎어 둠(가속도 센서), 주머니 속(근접·조도 센서, 기본 꺼짐).
 
 ## 구조
 
@@ -74,7 +86,7 @@ adb shell pm grant com.seooki.ddokddok.notifier android.permission.POST_NOTIFICA
 adb shell am broadcast -f 0x20 -n com.seooki.ddokddok.notifier/.PostReceiver --es case <시나리오>
 ```
 
-시나리오: `alert`, `low`, `min`, `ongoing`, `alert_once`(두 번 보내면 두 번째는 업데이트), `update`, `group_children`, `group_summary`, `call`, `secret`, `messaging`, `fullscreen`, `silent`(Android 16 무음 표시), `summary_nogroup`, `cancel_all`.
+시나리오: `alert`, `low`, `min`, `ongoing`, `alert_once`(두 번 보내면 두 번째는 업데이트), `update`, `group_children`, `group_summary`, `call`, `secret`, `messaging`, `fullscreen`, `silent`(Android 16 무음 표시), `summary_nogroup`, `self_wake`(알림을 올리며 스스로 화면을 켜는 앱), `cancel_all`.
 화면을 끈 뒤 보내고 `PowerManagerService`의 "Waking up ... reason=" 로그와 앱 기록(디버그 빌드: `run-as com.seooki.ddokddok cat no_backup/wake_events.tsv`)을 본다.
 
 포그라운드 서비스 알림의 재전송은 화면이 켜진 상태에서 시작해 몇 초 안에 화면을 끄고 본다.
@@ -84,6 +96,15 @@ adb shell am start -n com.seooki.ddokddok.notifier/.ForegroundRepostActivity --e
 ```
 
 ## 확인 기록
+
+2026-10-01, 0.1.3, Android 16 에뮬레이터(네트워크 차단):
+
+- 실기기에서 번개장터 알림 때 화면은 켜졌지만 얼굴 인식이 시작되지 않았다는 제보를 바탕으로 한 수정이다. 삼성의 '화면이 꺼져 있을 때에도 보이기' 알림 팝업은 앱별로 설정되고, 이것이 똑똑보다 먼저 화면을 밝히면 위 증상이 난다고 추정했다.
+- `self_wake`(알림을 올리며 스스로 화면을 켜는 앱): 다른 앱이 켬(`WAKE_REASON_APPLICATION`) → 0.24초 뒤 똑똑이 끔 → 0.7초 뒤 메뉴 키로 다시 켬(`WAKE_REASON_WAKE_KEY`). 최근 기록에 '먼저 켜진 화면을 다시 켬'이 남는다. 이 기능을 끄면 '다른 기능이 먼저 화면을 켬'만 남기고 화면은 그대로 둔다. 디버그·릴리스 빌드 모두 같다.
+- 사람이 3초 전에 켜 둔 화면, 똑똑이 1초 전에 켠 화면에는 손대지 않는다. 전체 화면 알림·전화처럼 시스템이 직접 켜는 알림은 다시 켜지 않는다.
+- 기존 18개 시나리오가 그대로이고, 0.1.2 위에 덮어 설치해도 이전 기록이 남는다(기록 파일 형식 확장, 이전 형식도 읽음).
+- 에뮬레이터는 AOD를 지원하지 않아(`doze_always_on`을 켜도 화면이 완전히 꺼짐) 'AOD·알림 팝업이 사라질 때까지 기다리기'와 AOD에서의 메뉴 키는 단위 테스트와 소스 분석으로만 확인했다. 실기기 기록의 'AOD 상태에서', '알림 팝업이 사라진 뒤' 표시로 확인한다.
+- 단위 테스트 57개, 릴리스 린트 오류 0개.
 
 2026-10-01, 0.1.2, Android 16 에뮬레이터(네트워크 차단):
 

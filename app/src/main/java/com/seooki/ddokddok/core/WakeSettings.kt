@@ -27,6 +27,11 @@ data class WakeSettings(
     val fallbackToWakeLock: Boolean = true,
     /** AOD가 떠 있을 때는 전원 버튼 방식 대신 기본 방식을 쓴다. PIN 입력 화면이 뜨는 폰을 위한 설정이다. */
     val avoidMenuKeyWhenDozing: Boolean = false,
+    /**
+     * 알림과 함께 다른 기능(삼성 알림 팝업 등)이 화면을 먼저 켜면, 껐다가 전원 버튼 방식으로 다시 켠다.
+     * 그렇게 켜진 화면은 얼굴 인식이 시작되지 않기 때문이다.
+     */
+    val rewakeWhenOthersWake: Boolean = true,
     val respectDnd: Boolean = true,
     val skipWhenFaceDown: Boolean = true,
     val skipWhenInPocket: Boolean = false,

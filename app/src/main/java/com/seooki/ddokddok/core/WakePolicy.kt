@@ -24,6 +24,9 @@ enum class SkipReason(val recorded: Boolean) {
     QUIET_HOURS(true),
     COOLDOWN(true),
     APP_COOLDOWN(true),
+
+    /** 알림과 함께 다른 기능(삼성 알림 팝업 등)이 화면을 먼저 켰고, 다시 켜지 않았다. */
+    WOKEN_BY_OTHER(true),
     FACE_DOWN(true),
     IN_POCKET(true),
 }

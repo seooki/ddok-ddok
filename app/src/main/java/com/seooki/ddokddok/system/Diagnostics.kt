@@ -5,6 +5,7 @@ import android.os.Build
 import com.seooki.ddokddok.BuildConfig
 import com.seooki.ddokddok.appGraph
 import com.seooki.ddokddok.data.EventOutcome
+import com.seooki.ddokddok.data.WakeDetail
 import com.seooki.ddokddok.data.WakeEvent
 import java.time.Instant
 import java.time.ZoneId
@@ -36,6 +37,7 @@ object Diagnostics {
             appendLine(
                 "방식: ${settings.method.key} 대체=${yn(settings.fallbackToWakeLock)}" +
                     " AOD예외=${yn(settings.avoidMenuKeyWhenDozing)}" +
+                    " 다시켜기=${yn(settings.rewakeWhenOthersWake)}" +
                     " 테스트=${settings.testResults.entries.joinToString(",") { "${it.key.key}:${it.value.key}" }}",
             )
             appendLine(
@@ -48,7 +50,9 @@ object Diagnostics {
             )
             appendLine("기록 ${events.size}건: ${summarize(events)}")
             appendLine("최근 기록(최신순):")
-            events.takeLast(RECENT).asReversed().forEach { appendLine("  ${time(it.timeMillis)} ${it.packageName} ${code(it.outcome)}") }
+            events.takeLast(RECENT).asReversed().forEach {
+                appendLine("  ${time(it.timeMillis)} ${it.packageName} ${code(it.outcome)}${detail(it.detail)}")
+            }
         }
     }
 
@@ -61,6 +65,14 @@ object Diagnostics {
         is EventOutcome.Woke -> "켬:${outcome.method.key}${if (outcome.usedFallback) "(대체)" else ""}"
         is EventOutcome.Skipped -> "안켬:${outcome.reason.name}"
         is EventOutcome.Failed -> "실패:${outcome.reason.name}"
+    }
+
+    /** 켤 때 화면 상태(off·doze·on), 알림 팝업을 기다린 시간, 다른 쪽이 켠 화면을 다시 켰는지. */
+    private fun detail(detail: WakeDetail?): String {
+        if (detail == null) return ""
+        val waited = if (detail.waitedMs > 0) " 기다림${detail.waitedMs}ms" else ""
+        val rewoke = if (detail.rewoke) " 다시켬" else ""
+        return " [${detail.display.key}$waited$rewoke]"
     }
 
     /** 삼성 기기에만 있는 One UI 버전 값(예: 170500 → One UI 8.5). */

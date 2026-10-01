@@ -37,6 +37,7 @@ class SettingsRepository(context: Context, private val defaultMethod: WakeMethod
             method = WakeMethod.fromKey(prefs.getString(KEY_METHOD, null)) ?: defaults.method,
             fallbackToWakeLock = prefs.getBoolean(KEY_FALLBACK, defaults.fallbackToWakeLock),
             avoidMenuKeyWhenDozing = prefs.getBoolean(KEY_AVOID_MENU_KEY_WHEN_DOZING, defaults.avoidMenuKeyWhenDozing),
+            rewakeWhenOthersWake = prefs.getBoolean(KEY_REWAKE_WHEN_OTHERS_WAKE, defaults.rewakeWhenOthersWake),
             respectDnd = prefs.getBoolean(KEY_RESPECT_DND, defaults.respectDnd),
             skipWhenFaceDown = prefs.getBoolean(KEY_SKIP_FACE_DOWN, defaults.skipWhenFaceDown),
             skipWhenInPocket = prefs.getBoolean(KEY_SKIP_POCKET, defaults.skipWhenInPocket),
@@ -59,6 +60,7 @@ class SettingsRepository(context: Context, private val defaultMethod: WakeMethod
         putString(KEY_METHOD, settings.method.key)
         putBoolean(KEY_FALLBACK, settings.fallbackToWakeLock)
         putBoolean(KEY_AVOID_MENU_KEY_WHEN_DOZING, settings.avoidMenuKeyWhenDozing)
+        putBoolean(KEY_REWAKE_WHEN_OTHERS_WAKE, settings.rewakeWhenOthersWake)
         putBoolean(KEY_RESPECT_DND, settings.respectDnd)
         putBoolean(KEY_SKIP_FACE_DOWN, settings.skipWhenFaceDown)
         putBoolean(KEY_SKIP_POCKET, settings.skipWhenInPocket)
@@ -81,6 +83,7 @@ class SettingsRepository(context: Context, private val defaultMethod: WakeMethod
         const val KEY_METHOD = "method"
         const val KEY_FALLBACK = "fallback_to_wake_lock"
         const val KEY_AVOID_MENU_KEY_WHEN_DOZING = "avoid_menu_key_when_dozing"
+        const val KEY_REWAKE_WHEN_OTHERS_WAKE = "rewake_when_others_wake"
         const val KEY_RESPECT_DND = "respect_dnd"
         const val KEY_SKIP_FACE_DOWN = "skip_face_down"
         const val KEY_SKIP_POCKET = "skip_in_pocket"

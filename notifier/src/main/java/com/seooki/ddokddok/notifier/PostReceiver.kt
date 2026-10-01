@@ -8,6 +8,7 @@ import android.app.Person
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.PowerManager
 
 /**
  * 시나리오 이름을 받아 그에 맞는 실제 알림을 올린다.
@@ -58,8 +59,20 @@ class PostReceiver : BroadcastReceiver() {
                     .setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN)
                     .build(),
             )
+            // 알림을 올리면서 스스로 화면을 켜는 앱(또는 삼성 알림 팝업)을 흉내 낸다. '앱이 켬'으로 기록되어 얼굴 인식이 시작되지 않는다.
+            "self_wake" -> {
+                manager.notify(36, base(context, CHANNEL_DEFAULT, "self wake").build())
+                wakeScreen(context)
+            }
             "cancel_all" -> manager.cancelAll()
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun wakeScreen(context: Context) {
+        context.getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP, "notifier:self_wake")
+            .acquire(SELF_WAKE_MS)
     }
 
     private fun postGroup(manager: NotificationManager, context: Context, group: String, alert: Int, firstId: Int) {
@@ -114,5 +127,6 @@ class PostReceiver : BroadcastReceiver() {
         const val CHANNEL_LOW = "low"
         const val CHANNEL_MIN = "min"
         const val SILENT_GROUP = "silent"
+        const val SELF_WAKE_MS = 3_000L
     }
 }

@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import android.view.Display
+import com.seooki.ddokddok.core.DisplayKind
 import com.seooki.ddokddok.core.FailReason
 import com.seooki.ddokddok.core.WakeMethod
 import com.seooki.ddokddok.core.WakeResult
@@ -19,8 +20,22 @@ class ScreenWaker(context: Context) {
 
     val isScreenOn: Boolean get() = powerManager.isInteractive
 
+    /** 마지막으로 켜기 신호를 보낸 시각(부팅 후 시간). 그 직후 켜진 화면은 똑똑이 켠 것이다. */
+    var lastTriggerAtMs: Long? = null
+        private set
+
     private val displayState: Int
         get() = displayManager.getDisplay(Display.DEFAULT_DISPLAY)?.state ?: Display.STATE_UNKNOWN
+
+    val isDisplayOff: Boolean get() = displayState == Display.STATE_OFF
+
+    val displayKind: DisplayKind
+        get() = when (displayState) {
+            Display.STATE_OFF -> DisplayKind.OFF
+            Display.STATE_DOZE, Display.STATE_DOZE_SUSPEND -> DisplayKind.DOZE
+            Display.STATE_ON, Display.STATE_ON_SUSPEND, Display.STATE_VR -> DisplayKind.ON
+            else -> DisplayKind.UNKNOWN
+        }
 
     /**
      * 화면이 완전히 꺼지지 않은 상태(AOD, 꺼지는 중 등)인지. 시스템(PhoneWindowManager)은 화면이 STATE_OFF가
@@ -39,12 +54,40 @@ class ScreenWaker(context: Context) {
         }
     }
 
+    /**
+     * 화면이 완전히 꺼질 때까지 기다린다. 알림 팝업처럼 잠깐 밝아진 화면이 사라지기를 기다리는 데 쓴다.
+     * 그 사이 화면이 켜지면 바로 멈춘다. 꺼졌으면 true다.
+     */
+    suspend fun awaitDisplayOff(timeoutMs: Long): Boolean {
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
+        while (!isScreenOn && !isDisplayOff && SystemClock.elapsedRealtime() < deadline) {
+            delay(POLL_INTERVAL_MS)
+        }
+        return !isScreenOn && isDisplayOff
+    }
+
+    /**
+     * 다른 쪽이 먼저 켠 화면을 전원 버튼처럼 끄고 다 꺼질(또는 AOD가 될) 때까지 기다린다.
+     * 끈 뒤 메뉴 키로 다시 켜면 '키를 눌러 켬'이 되어 얼굴 인식이 시작된다. 접근성 서비스가 없거나 꺼지지 않으면 false다.
+     */
+    suspend fun turnOffForRewake(): Boolean {
+        if (!lockScreen()) return false
+        val deadline = SystemClock.elapsedRealtime() + REWAKE_OFF_TIMEOUT_MS
+        while (isScreenOn && SystemClock.elapsedRealtime() < deadline) delay(POLL_INTERVAL_MS)
+        if (isScreenOn) return false
+        awaitDisplaySettled()
+        return true
+    }
+
     /** 켜기 신호만 보낸다. 신호를 못 보냈으면 그 이유를, 보냈으면 null을 돌려준다. */
-    fun trigger(method: WakeMethod): FailReason? = when (method) {
-        WakeMethod.MENU_KEY -> pressMenuKey()
-        WakeMethod.WAKE_LOCK -> {
-            acquireScreenWakeLock()
-            null
+    fun trigger(method: WakeMethod): FailReason? {
+        lastTriggerAtMs = SystemClock.elapsedRealtime()
+        return when (method) {
+            WakeMethod.MENU_KEY -> pressMenuKey()
+            WakeMethod.WAKE_LOCK -> {
+                acquireScreenWakeLock()
+                null
+            }
         }
     }
 
@@ -56,6 +99,7 @@ class ScreenWaker(context: Context) {
         if (triggerFailure == null && isScreenOn) return WakeResult.Woke(method)
         val failure = triggerFailure ?: FailReason.NO_RESPONSE
         if (allowFallback && method != WakeMethod.WAKE_LOCK && !isScreenOn) {
+            lastTriggerAtMs = SystemClock.elapsedRealtime()
             acquireScreenWakeLock()
             if (awaitScreenOn()) return WakeResult.Woke(WakeMethod.WAKE_LOCK, primaryFailure = failure)
         }
@@ -97,6 +141,7 @@ class ScreenWaker(context: Context) {
         const val SCREEN_WAKE_LOCK_MS = 1_000L
         const val VERIFY_TIMEOUT_MS = 1_000L
         const val SETTLE_TIMEOUT_MS = 1_000L
+        const val REWAKE_OFF_TIMEOUT_MS = 1_000L
         const val POLL_INTERVAL_MS = 50L
         val SETTLED_STATES = setOf(Display.STATE_OFF, Display.STATE_DOZE, Display.STATE_DOZE_SUSPEND)
     }

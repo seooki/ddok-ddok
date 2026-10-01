@@ -149,7 +149,7 @@ private fun HistoryRow(event: WakeEvent, excluded: Boolean, onSetExcluded: (Bool
         headlineContent = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = {
             Column {
-                Text(outcomeText(event.outcome), color = outcomeColor, style = MaterialTheme.typography.bodyMedium)
+                Text(outcomeText(event.outcome, event.detail), color = outcomeColor, style = MaterialTheme.typography.bodyMedium)
                 Text(formatEventTime(event.timeMillis), style = MaterialTheme.typography.bodySmall)
             }
         },
