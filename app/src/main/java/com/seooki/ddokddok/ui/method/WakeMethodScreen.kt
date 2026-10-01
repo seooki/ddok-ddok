@@ -131,6 +131,24 @@ fun WakeMethodScreen(onBack: () -> Unit) {
                     onOpenAccessibility = { SystemSetup.openAccessibility(context) },
                 )
             }
+            item { FaceUnlockTip(onOpenSecurity = { SystemSetup.openSecuritySettings(context) }) }
+        }
+    }
+}
+
+/** 삼성 얼굴 인식을 아이폰처럼 쓰는 방법. 인식 뒤에도 잠금화면에 머물러야 알림을 보고 밀어서 들어가는 흐름이 된다. */
+@Composable
+private fun FaceUnlockTip(onOpenSecurity: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp)) {
+            Text(stringResource(R.string.method_tip_title), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.method_tip_body), style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onOpenSecurity) { Text(stringResource(R.string.method_tip_action)) }
         }
     }
 }
@@ -288,7 +306,7 @@ private fun observationText(observation: WakeTestRunner.Observation): String {
         return stringResource(R.string.test_observation_not_woke, reason)
     }
     val parts = buildList {
-        if (observation.wasDozing) add(stringResource(R.string.test_observation_dozing))
+        if (observation.displayWasOn) add(stringResource(R.string.test_observation_dozing))
         add(stringResource(R.string.test_observation_woke, seconds(screenOnAfter)))
         observation.unlockedAfterMs?.let { add(stringResource(R.string.test_observation_unlocked, seconds(it))) }
     }

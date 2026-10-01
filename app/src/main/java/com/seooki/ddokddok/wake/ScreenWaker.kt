@@ -19,12 +19,25 @@ class ScreenWaker(context: Context) {
 
     val isScreenOn: Boolean get() = powerManager.isInteractive
 
-    /** AOD처럼 화면이 저전력으로 켜져 있는 상태인지. 이때는 메뉴 키가 잠금화면까지 전달된다. */
-    val isDozing: Boolean
-        get() = when (displayManager.getDisplay(Display.DEFAULT_DISPLAY)?.state) {
-            Display.STATE_DOZE, Display.STATE_DOZE_SUSPEND -> true
-            else -> false
+    private val displayState: Int
+        get() = displayManager.getDisplay(Display.DEFAULT_DISPLAY)?.state ?: Display.STATE_UNKNOWN
+
+    /**
+     * 화면이 완전히 꺼지지 않은 상태(AOD, 꺼지는 중 등)인지. 시스템(PhoneWindowManager)은 화면이 STATE_OFF가
+     * 아니고 잠금화면이 떠 있으면 메뉴 키를 잠금화면에 전달한다. 그러면 PIN 입력 화면이 뜰 수 있다.
+     */
+    val isDisplayOn: Boolean get() = displayState != Display.STATE_OFF
+
+    /**
+     * 측면 버튼을 누른 직후처럼 화면이 꺼지는 중이면, 완전히 꺼지거나 AOD로 바뀔 때까지 잠깐 기다린다.
+     * 그 사이에 메뉴 키를 보내면 잠금화면에 전달되기 때문이다.
+     */
+    suspend fun awaitDisplaySettled(timeoutMs: Long = SETTLE_TIMEOUT_MS) {
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
+        while (!isScreenOn && displayState !in SETTLED_STATES && SystemClock.elapsedRealtime() < deadline) {
+            delay(POLL_INTERVAL_MS)
         }
+    }
 
     /** 켜기 신호만 보낸다. 신호를 못 보냈으면 그 이유를, 보냈으면 null을 돌려준다. */
     fun trigger(method: WakeMethod): FailReason? = when (method) {
@@ -37,13 +50,16 @@ class ScreenWaker(context: Context) {
 
     /** [method]로 켜 보고, 안 켜지면 [allowFallback]일 때 기본 방식으로 한 번 더 켠다. */
     suspend fun wake(method: WakeMethod, allowFallback: Boolean): WakeResult {
-        val failure = trigger(method)
-        if (failure == null && awaitScreenOn()) return WakeResult.Woke(method, usedFallback = false)
+        val triggerFailure = trigger(method)
+        if (triggerFailure == null && awaitScreenOn()) return WakeResult.Woke(method)
+        // 확인 시간을 살짝 넘겨 켜졌다면 성공으로 본다.
+        if (triggerFailure == null && isScreenOn) return WakeResult.Woke(method)
+        val failure = triggerFailure ?: FailReason.NO_RESPONSE
         if (allowFallback && method != WakeMethod.WAKE_LOCK && !isScreenOn) {
             acquireScreenWakeLock()
-            if (awaitScreenOn()) return WakeResult.Woke(WakeMethod.WAKE_LOCK, usedFallback = true)
+            if (awaitScreenOn()) return WakeResult.Woke(WakeMethod.WAKE_LOCK, primaryFailure = failure)
         }
-        return WakeResult.Failed(failure ?: FailReason.NO_RESPONSE)
+        return WakeResult.Failed(failure)
     }
 
     /** 화면이 켜질 때까지 짧게 확인한다. 켜지는 순간 isInteractive가 바로 바뀌어서 방송을 기다리는 것보다 빠르다. */
@@ -55,6 +71,9 @@ class ScreenWaker(context: Context) {
         }
         return true
     }
+
+    /** 전원 버튼을 눌러 끈 것처럼 화면을 끈다. 접근성 서비스가 있어야 하고, 지문·얼굴 인식은 그대로 된다. */
+    fun lockScreen(): Boolean = AccessibilityBridge.service.value?.lockScreen() ?: false
 
     private fun pressMenuKey(): FailReason? {
         if (Build.VERSION.SDK_INT < 36) return FailReason.UNSUPPORTED
@@ -77,6 +96,8 @@ class ScreenWaker(context: Context) {
         const val SCREEN_WAKE_LOCK_TAG = "ddokddok:screen"
         const val SCREEN_WAKE_LOCK_MS = 1_000L
         const val VERIFY_TIMEOUT_MS = 1_000L
+        const val SETTLE_TIMEOUT_MS = 1_000L
         const val POLL_INTERVAL_MS = 50L
+        val SETTLED_STATES = setOf(Display.STATE_OFF, Display.STATE_DOZE, Display.STATE_DOZE_SUSPEND)
     }
 }

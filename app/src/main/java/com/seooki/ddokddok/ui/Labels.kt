@@ -43,14 +43,19 @@ fun TestFollowUp.messageRes(): Int = when (this) {
 @StringRes
 fun SkipReason.labelRes(): Int = when (this) {
     SkipReason.DISABLED -> R.string.skip_disabled
+    SkipReason.SNOOZED -> R.string.skip_snoozed
     SkipReason.SCREEN_ON -> R.string.skip_screen_on
     SkipReason.OWN_APP -> R.string.skip_own_app
     SkipReason.ONGOING -> R.string.skip_ongoing
+    SkipReason.REPOST -> R.string.skip_repost
+    SkipReason.SUSPENDED_APP -> R.string.skip_suspended_app
+    SkipReason.APP_COOLDOWN -> R.string.skip_app_cooldown
     SkipReason.GROUP_SILENT -> R.string.skip_group_silent
     SkipReason.ALERT_ONCE_UPDATE -> R.string.skip_alert_once_update
     SkipReason.BUSY -> R.string.skip_busy
     SkipReason.EXCLUDED_APP -> R.string.skip_excluded_app
     SkipReason.SILENT -> R.string.skip_silent
+    SkipReason.SILENT_UPDATE -> R.string.skip_silent_update
     SkipReason.DND -> R.string.skip_dnd
     SkipReason.SYSTEM_HANDLES -> R.string.skip_system_handles
     SkipReason.HIDDEN_ON_LOCKSCREEN -> R.string.skip_hidden_on_lockscreen
@@ -83,6 +88,19 @@ fun outcomeText(outcome: EventOutcome): String = when (outcome) {
 /** "오후 11:00"처럼 기기 언어에 맞춘 시각. */
 fun formatMinuteOfDay(minuteOfDay: Int): String =
     LocalTime.of(minuteOfDay / 60, minuteOfDay % 60).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+
+/** epoch 시각을 "오후 3:12"처럼 보여 준다. */
+fun formatEpochTime(epochMs: Long): String =
+    Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).toLocalTime()
+        .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+
+/** 0이면 [zeroLabel], 분 단위로 떨어지면 "1분", 아니면 "30초". */
+@Composable
+fun durationLabel(seconds: Int, @StringRes zeroLabel: Int): String = when {
+    seconds == 0 -> stringResource(zeroLabel)
+    seconds % 60 == 0 -> stringResource(R.string.duration_minutes, seconds / 60)
+    else -> stringResource(R.string.duration_seconds, seconds)
+}
 
 /** "오늘 오후 3:12", "어제 오전 9:01", "9월 28일 오후 3:12" */
 @Composable

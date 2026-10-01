@@ -60,7 +60,8 @@ fun HistoryScreen(onBack: () -> Unit) {
     var confirmClear by rememberSaveable { mutableStateOf(false) }
     val newestFirst = remember(events) { events.asReversed() }
     val wokeToday = remember(events) { events.countToday { it is EventOutcome.Woke } }
-    val skippedToday = remember(events) { events.countToday { it !is EventOutcome.Woke } }
+    val skippedToday = remember(events) { events.countToday { it is EventOutcome.Skipped } }
+    val failedToday = remember(events) { events.countToday { it is EventOutcome.Failed } }
 
     DetailScaffold(
         title = R.string.history_title,
@@ -79,7 +80,11 @@ fun HistoryScreen(onBack: () -> Unit) {
             } else {
                 item {
                     Text(
-                        text = stringResource(R.string.history_summary, wokeToday, skippedToday),
+                        text = if (failedToday > 0) {
+                            stringResource(R.string.history_summary_with_failures, wokeToday, skippedToday, failedToday)
+                        } else {
+                            stringResource(R.string.history_summary, wokeToday, skippedToday)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),

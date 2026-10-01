@@ -4,9 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import com.seooki.ddokddok.core.FailReason
 import com.seooki.ddokddok.core.TestAnswers
 import com.seooki.ddokddok.core.TestFollowUp
@@ -47,8 +47,8 @@ class WakeTestRunner(
         val triggerFailure: FailReason?,
         val screenOnAfterMs: Long?,
         val unlockedAfterMs: Long?,
-        /** 켜기 직전 AOD가 떠 있었는지. AOD에서는 PIN 입력 화면이 뜰 수 있어서 결과를 따로 다룬다. */
-        val wasDozing: Boolean,
+        /** 켜기 직전 화면이 완전히 꺼지지 않았는지(AOD 등). 이때는 PIN 입력 화면이 뜰 수 있어서 결과를 따로 다룬다. */
+        val displayWasOn: Boolean,
     )
 
     private val powerManager = context.getSystemService(PowerManager::class.java)
@@ -78,7 +78,7 @@ class WakeTestRunner(
         val answered = _state.value as? State.AwaitingAnswer ?: return
         var followUp: TestFollowUp? = null
         settings.update { current ->
-            val (next, change) = TestAnswers.apply(current, answered.method, result, answered.observation.wasDozing)
+            val (next, change) = TestAnswers.apply(current, answered.method, result, answered.observation.displayWasOn)
             followUp = change
             next
         }
@@ -117,7 +117,7 @@ class WakeTestRunner(
             }
 
             unlocked.tryReceive()
-            val wasDozing = waker.isDozing
+            val displayWasOn = waker.isDisplayOn
             val firedAt = SystemClock.elapsedRealtime()
             val failure = waker.trigger(method)
             _state.value = State.Observing(method)
@@ -130,7 +130,7 @@ class WakeTestRunner(
                     triggerFailure = failure,
                     screenOnAfterMs = screenOnAfter,
                     unlockedAfterMs = unlockedAt?.minus(firedAt),
-                    wasDozing = wasDozing,
+                    displayWasOn = displayWasOn,
                 ),
             )
         } finally {
@@ -146,11 +146,7 @@ class WakeTestRunner(
         }
         // 둘 다 시스템만 보낼 수 있는 보호된 방송이라 열어 둬도 다른 앱이 흉내 낼 수 없다.
         // 잠금 해제(USER_PRESENT)는 system이 아니라 SystemUI가 보내서 NOT_EXPORTED로 등록하면 받지 못한다.
-        if (Build.VERSION.SDK_INT >= 33) {
-            context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            context.registerReceiver(receiver, filter)
-        }
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
     }
 
     companion object {

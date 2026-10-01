@@ -15,6 +15,14 @@
     <string name="home_status_setup_needed">설정 %1$d개를 마치면 동작해요</string>
     <string name="home_status_off">꺼져 있어요</string>
     <string name="home_status_on">켜져 있어요 · 오늘 %1$d번 켰어요</string>
+    <string name="home_status_snoozed">%1$s까지 쉬는 중이에요</string>
+    <string name="home_snooze">1시간 쉬기</string>
+    <string name="home_resume">다시 켜기</string>
+    <string name="home_stuck_title">접근성 서비스가 멈춰 있어요</string>
+    <string name="home_stuck_body">앱이 비정상 종료되면 안드로이드가 접근성 연결을 끊어요. 설정에서 ‘똑똑 화면 켜기’를 껐다가 다시 켜 주세요.</string>
+    <string name="home_stuck_fallback">그전까지는 기본 방식으로 켜서 얼굴 인식이 바로 되지 않아요.</string>
+    <string name="home_stuck_no_wake">그전까지는 알림이 와도 화면이 켜지지 않아요.</string>
+    <string name="home_stuck_action">접근성 설정 열기</string>
     <string name="home_setup_title">시작하기</string>
     <string name="home_section_settings">설정</string>
     <string name="home_row_method">화면 켜는 방식</string>
@@ -23,7 +31,9 @@
     <string name="home_conditions_dnd">방해 금지 따름</string>
     <string name="home_conditions_face_down">엎어 두면 안 켬</string>
     <string name="home_conditions_pocket">주머니 속 안 켬</string>
-    <string name="home_conditions_cooldown">%1$d초 간격</string>
+    <string name="home_conditions_cooldown">%1$s 간격</string>
+    <string name="home_conditions_app_cooldown">같은 앱 %1$s 간격</string>
+    <string name="home_conditions_auto_off">%1$s 뒤 끄기</string>
     <string name="home_conditions_quiet">%1$s~%2$s 안 켬</string>
     <string name="home_conditions_none">모든 알림에 켜기</string>
     <string name="home_row_apps">앱 선택</string>
@@ -32,6 +42,8 @@
     <string name="home_row_history">최근 기록</string>
     <string name="home_history_today">오늘 %1$d번 켰어요</string>
     <string name="home_history_empty">아직 기록이 없어요</string>
+    <string name="home_row_about">정보</string>
+    <string name="home_about_summary">버전 %1$s · 진단 정보 복사</string>
     <string name="home_privacy">인터넷 권한이 없는 앱이에요. 알림 내용은 읽거나 저장하지 않고, 어떤 정보도 폰 밖으로 나가지 않아요.</string>
 
     <!-- 시작하기 -->
@@ -42,11 +54,14 @@
     <string name="setup_notification_body">어떤 앱에서 알림이 왔는지만 확인해요. 알림 내용은 읽거나 저장하지 않아요.</string>
     <string name="setup_accessibility_title">접근성 서비스 켜기</string>
     <string name="setup_accessibility_body">화면을 전원 버튼처럼 켜는 데만 써요. 화면 내용은 읽지 않아요. 접근성 설정의 ‘설치된 앱’(또는 ‘다운로드한 앱’)에서 ‘똑똑 화면 켜기’를 켜 주세요.</string>
+    <string name="setup_accessibility_body_optional">기본 방식은 접근성 없이도 켜지지만, 삼성 폰은 접근성이 있어야 화면이 켜질 수 있어요. 화면 자동 끄기에도 필요해요. 화면 내용은 읽지 않아요.</string>
     <string name="setup_restricted_title">허용 버튼이 눌리지 않나요?</string>
     <string name="setup_restricted_hint">직접 설치한 앱은 처음에 막혀 있어요. 앱 정보에서 오른쪽 위 ⋮ 를 누르고 ‘제한된 설정 허용’을 선택한 뒤 다시 켜 주세요.</string>
     <string name="setup_open_app_info">앱 정보 열기</string>
     <string name="setup_battery_title">배터리 사용 제한 없음</string>
     <string name="setup_battery_body">절전 기능 때문에 알림 감지가 끊기지 않게 해요.</string>
+    <string name="setup_status_notifications_title">문제가 생기면 알림 받기</string>
+    <string name="setup_status_notifications_body">접근성 서비스가 멈추는 등 화면 켜기가 제대로 안 될 때만 알려 드려요.</string>
     <string name="setup_test_title">화면 켜기 테스트</string>
     <string name="setup_test_body">이 폰에서 화면이 켜지자마자 얼굴 인식이 되는지 확인해요.</string>
     <string name="setup_action_allow">허용하기</string>
@@ -65,6 +80,9 @@
     <string name="method_fallback_body">전원 버튼 방식으로 화면이 켜지지 않을 때 기본 방식으로 한 번 더 켜요.</string>
     <string name="method_avoid_dozing_title">AOD가 떠 있을 때는 기본 방식으로 켜기</string>
     <string name="method_avoid_dozing_body">AOD 상태에서 알림이 올 때 PIN 입력 화면이 뜬다면 켜 주세요. 이때는 얼굴 인식이 바로 시작되지 않아요.</string>
+    <string name="method_tip_title">얼굴 인식 후 바로 홈 화면으로 넘어간다면</string>
+    <string name="method_tip_body">삼성 얼굴 인식 설정에서 인식한 뒤에도 잠금화면에 머무르는 옵션(영문명 Stay on Lock screen)을 켜 보세요. 아이폰처럼 잠금화면에서 알림을 보고, 밀어 올려서 들어가게 돼요.</string>
+    <string name="method_tip_action">보안 설정 열기</string>
     <string name="result_untested">테스트 전</string>
     <string name="result_face_unlock">얼굴 인식 확인됨</string>
     <string name="result_screen_only">얼굴 인식 안 됨</string>
@@ -103,17 +121,26 @@
     <string name="cond_face_down_title">엎어 두면 켜지 않기</string>
     <string name="cond_face_down_body">화면이 바닥을 향해 있으면 켜지 않아요.</string>
     <string name="cond_pocket_title">주머니·가방 속에서 켜지 않기</string>
-    <string name="cond_pocket_body">근접 센서로 확인해요. 폰에 따라 정확하지 않을 수 있어요.</string>
-    <string name="cond_pocket_unavailable">이 폰에는 근접 센서가 없어요.</string>
+    <string name="cond_pocket_body">근접 센서와, 어두운데 세워져 있는지를 함께 봐요. 폰에 따라 정확하지 않을 수 있어요.</string>
+    <string name="cond_pocket_unavailable">이 폰에는 주머니 감지에 쓸 센서가 없어요.</string>
     <string name="cond_cooldown_title">다시 켜기까지 간격</string>
     <string name="cond_cooldown_body">알림이 연달아 와도 이 시간 안에는 한 번만 켜요.</string>
     <string name="cond_cooldown_none">없음</string>
-    <string name="cond_cooldown_seconds">%1$d초</string>
+    <string name="cond_app_cooldown_title">같은 앱 알림 간격</string>
+    <string name="cond_app_cooldown_body">단톡방처럼 몰아서 오는 알림은 같은 앱이면 이 시간 안에 한 번만 켜요.</string>
+    <string name="cond_after_wake_section">켜진 뒤</string>
+    <string name="cond_auto_off_title">켜진 화면 자동으로 끄기</string>
+    <string name="cond_auto_off_body">알림으로 켠 화면을 이 시간이 지나면 전원 버튼처럼 꺼요. 얼굴이나 지문으로 인식되면 끄지 않지만, 인식 없이 잠금화면을 보고 있으면 꺼질 수 있어요. 없음이면 전원 버튼으로 켰을 때처럼 폰 설정을 따라요.</string>
+    <string name="cond_auto_off_unavailable">접근성 서비스가 켜져 있어야 쓸 수 있어요.</string>
+    <string name="cond_auto_off_none">없음</string>
+    <string name="duration_seconds">%1$d초</string>
+    <string name="duration_minutes">%1$d분</string>
     <string name="cond_quiet_section">방해하지 않을 시간</string>
     <string name="cond_quiet_title">이 시간에는 켜지 않기</string>
     <string name="cond_quiet_body">알림이 와도 화면을 켜지 않아요. 알림 소리는 폰 설정을 따라요.</string>
     <string name="cond_quiet_start">시작</string>
     <string name="cond_quiet_end">끝</string>
+    <string name="cond_quiet_same_time">시작과 끝이 같아서 적용되지 않아요. 시간을 바꿔 주세요.</string>
 
     <!-- 앱 선택 -->
     <string name="apps_title">앱 선택</string>
@@ -125,6 +152,7 @@
     <!-- 최근 기록 -->
     <string name="history_title">최근 기록</string>
     <string name="history_summary">오늘 %1$d번 켜고 %2$d번 건너뛰었어요</string>
+    <string name="history_summary_with_failures">오늘 %1$d번 켜고 %2$d번 건너뛰었어요 · 못 켬 %3$d번</string>
     <string name="history_empty">아직 기록이 없어요. 화면이 꺼져 있을 때 알림이 오면 여기에 남아요.</string>
     <string name="history_note">알림 내용은 저장하지 않아요. 최근 %1$d개만 이 폰에 보관해요.</string>
     <string name="history_today">오늘</string>
@@ -140,16 +168,45 @@
     <string name="history_skipped">안 켬 · %1$s</string>
     <string name="history_failed">못 켬 · %1$s</string>
 
+    <!-- 정보 -->
+    <string name="about_title">정보</string>
+    <string name="about_version">버전 %1$s (%2$d)</string>
+    <string name="about_diagnostics_title">진단 정보</string>
+    <string name="about_diagnostics_body">화면 켜기가 이상할 때 복사해서 붙여 넣어 주세요. 기기와 Android 버전, 권한·설정 상태, 최근 기록이 들어가요. 최근 기록에는 어느 앱의 알림이었는지(패키지 이름)가 포함되고, 알림 내용은 들어가지 않아요.</string>
+    <string name="about_diagnostics_copy">진단 정보 복사</string>
+    <string name="about_copied">복사했어요</string>
+    <string name="about_privacy">똑똑은 인터넷 권한이 없어서 어떤 정보도 폰 밖으로 보내지 않아요. 설정과 최근 기록은 이 폰에만 저장되고 백업되지 않아요.</string>
+    <string name="about_licenses">아이콘: Material Icons (Apache License 2.0)</string>
+
+    <!-- 빠른 설정 타일·상태 알림 -->
+    <string name="tile_label">똑똑</string>
+    <string name="tile_on">켜짐</string>
+    <string name="tile_off">꺼짐</string>
+    <string name="tile_snoozed">쉬는 중</string>
+    <string name="tile_snoozed_description">%1$s까지 쉬는 중</string>
+    <string name="status_channel_name">문제 알림</string>
+    <string name="status_accessibility_title">얼굴 인식이 바로 안 될 수 있어요</string>
+    <string name="status_accessibility_text">접근성 서비스가 꺼져 있거나 멈춰서 기본 방식으로 켜고 있어요. 접근성 설정에서 ‘똑똑 화면 켜기’를 껐다가 다시 켜 주세요.</string>
+    <string name="status_accessibility_no_wake_title">알림이 와도 화면을 켜지 못했어요</string>
+    <string name="status_accessibility_no_wake_text">접근성 서비스가 꺼져 있거나 멈췄어요. 접근성 설정에서 ‘똑똑 화면 켜기’를 껐다가 다시 켜 주세요.</string>
+    <string name="status_switched_title">기본 방식으로 바꿨어요</string>
+    <string name="status_switched_text">전원 버튼 방식이 연달아 화면을 켜지 못했어요. 폰이 업데이트되며 막혔을 수 있어요. 앱에서 화면 켜기 테스트를 다시 해 볼 수 있어요.</string>
+
     <!-- 켜지 않은 이유 -->
     <string name="skip_disabled">기능 꺼짐</string>
+    <string name="skip_snoozed">쉬는 중</string>
     <string name="skip_screen_on">화면이 켜져 있음</string>
     <string name="skip_own_app">똑똑 알림</string>
     <string name="skip_ongoing">진행 중 알림</string>
+    <string name="skip_repost">시스템이 다시 보낸 알림</string>
+    <string name="skip_suspended_app">사용이 일시정지된 앱</string>
+    <string name="skip_app_cooldown">같은 앱 간격 대기</string>
     <string name="skip_group_silent">묶음 알림</string>
     <string name="skip_alert_once_update">조용한 업데이트</string>
     <string name="skip_busy">다른 알림 처리 중</string>
     <string name="skip_excluded_app">끈 앱</string>
     <string name="skip_silent">소리 없는 알림</string>
+    <string name="skip_silent_update">소리 없는 알림의 업데이트</string>
     <string name="skip_dnd">방해 금지 모드</string>
     <string name="skip_system_handles">전화·알람은 폰이 직접 켜요</string>
     <string name="skip_hidden_on_lockscreen">잠금화면에 안 보이는 알림</string>

@@ -31,5 +31,7 @@ class QuietHoursTest {
     fun `꺼져 있거나 길이가 0이면 항상 비활성`() {
         assertFalse(QuietHours(enabled = false, startMinute = at(0), endMinute = at(23, 59)).isActiveAt(at(12)))
         assertFalse(QuietHours(enabled = true, startMinute = at(8), endMinute = at(8)).isActiveAt(at(8)))
+        assertFalse(QuietHours(enabled = true, startMinute = at(8), endMinute = at(8)).isEffective)
+        assertTrue(QuietHours(enabled = true, startMinute = at(8), endMinute = at(9)).isEffective)
     }
 }

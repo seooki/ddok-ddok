@@ -42,6 +42,22 @@ class PostReceiver : BroadcastReceiver() {
                 base(context, CHANNEL_DEFAULT, "secret").setVisibility(Notification.VISIBILITY_SECRET).build(),
             )
             "messaging" -> manager.notify(33, messaging(context).build())
+            // AndroidX NotificationCompat.setSilent(true)가 그룹 없는 알림에 하는 것과 같다. Android 16은 이를 FLAG_SILENT로 바꾼다.
+            "silent" -> manager.notify(
+                34,
+                base(context, CHANNEL_DEFAULT, "silent")
+                    .setGroup(SILENT_GROUP)
+                    .setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY)
+                    .build(),
+            )
+            // 요약 표시는 있지만 그룹이 없으면 시스템은 일반 알림으로 보고 소리를 낸다.
+            "summary_nogroup" -> manager.notify(
+                35,
+                base(context, CHANNEL_DEFAULT, "summary without group")
+                    .setGroupSummary(true)
+                    .setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN)
+                    .build(),
+            )
             "cancel_all" -> manager.cancelAll()
         }
     }
@@ -97,5 +113,6 @@ class PostReceiver : BroadcastReceiver() {
         const val CHANNEL_DEFAULT = "default"
         const val CHANNEL_LOW = "low"
         const val CHANNEL_MIN = "min"
+        const val SILENT_GROUP = "silent"
     }
 }

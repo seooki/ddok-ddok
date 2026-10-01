@@ -1,33 +1,35 @@
 package com.seooki.ddokddok.service
 
-import android.content.ComponentName
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.seooki.ddokddok.appGraph
 
-/** 새 알림을 받아 화면 켜기 판단으로 넘긴다. 콜백은 메인 스레드에서 온다. */
+/**
+ * 새 알림을 받아 화면 켜기 판단으로 넘긴다. 콜백은 메인 스레드에서 온다.
+ * 프로세스가 죽어도 연결은 시스템이 다시 맺어 준다.
+ */
 class WakeNotificationListener : NotificationListenerService() {
     private val controller get() = applicationContext.appGraph.controller
 
     override fun onListenerConnected() {
-        val active = try {
-            activeNotifications
+        // 이미 떠 있는 알림은 새 알림이 아니므로 기억해 둔다. 알림 내용을 불러오지 않도록 키만 받는다.
+        val keys = try {
+            currentRanking?.orderedKeys
         } catch (e: SecurityException) {
             null
         }
-        controller.onListenerConnected(active.orEmpty())
+        controller.onListenerConnected(keys.orEmpty())
     }
 
-    // 시스템이 연결을 끊었으면(앱 업데이트, 제조사 절전 등) 다시 연결을 요청한다. 사용자가 권한을 끈 경우엔 효과가 없다.
-    override fun onListenerDisconnected() {
-        requestRebind(ComponentName(this, WakeNotificationListener::class.java))
-    }
-
-    override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap) {
+    override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         controller.onNotificationPosted(sbn, rankingMap)
     }
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap) {
-        controller.onNotificationRemoved(sbn)
+    override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap?) {
+        controller.onNotificationRemoved(sbn.key)
+    }
+
+    override fun onNotificationRankingUpdate(rankingMap: RankingMap?) {
+        controller.onRankingUpdate(rankingMap)
     }
 }

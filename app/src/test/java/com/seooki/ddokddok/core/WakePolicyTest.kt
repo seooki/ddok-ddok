@@ -9,15 +9,14 @@ class WakePolicyTest {
     private val chat = NotificationFacts(packageName = "com.kakao.talk", importance = 4)
     private val screenOff = DeviceFacts(screenOn = false, inCall = false)
     private val defaults = WakeSettings(cooldownSeconds = 0)
+    private val noon = WakeTiming(nowElapsedMs = 100_000L, nowEpochMs = 1_000_000L, minuteOfDay = 12 * 60)
 
     private fun evaluate(
         notification: NotificationFacts = chat,
         device: DeviceFacts = screenOff,
         settings: WakeSettings = defaults,
-        nowElapsedMs: Long = 100_000L,
-        lastWakeElapsedMs: Long? = null,
-        minuteOfDay: Int = 12 * 60,
-    ) = WakePolicy.evaluate(notification, device, settings, OWN_PACKAGE, nowElapsedMs, lastWakeElapsedMs, minuteOfDay)
+        timing: WakeTiming = noon,
+    ) = WakePolicy.evaluate(notification, device, settings, OWN_PACKAGE, timing)
 
     private fun skip(reason: SkipReason) = Decision.Skip(reason)
 
@@ -29,6 +28,13 @@ class WakePolicyTest {
     @Test
     fun `기능이 꺼져 있으면 켜지 않는다`() {
         assertEquals(skip(SkipReason.DISABLED), evaluate(settings = defaults.copy(enabled = false)))
+    }
+
+    @Test
+    fun `쉬는 동안에는 켜지 않고 시간이 지나면 다시 켠다`() {
+        val snoozed = defaults.copy(snoozeUntilEpochMs = noon.nowEpochMs + 1)
+        assertEquals(skip(SkipReason.SNOOZED), evaluate(settings = snoozed))
+        assertEquals(Decision.Wake, evaluate(settings = defaults.copy(snoozeUntilEpochMs = noon.nowEpochMs)))
     }
 
     @Test
@@ -47,16 +53,35 @@ class WakePolicyTest {
     }
 
     @Test
+    fun `시스템이 다시 보낸 알림은 켜지 않는다`() {
+        assertEquals(skip(SkipReason.REPOST), evaluate(notification = chat.copy(isUpdate = true, isRepost = true)))
+    }
+
+    @Test
     fun `사용자가 끈 앱은 켜지 않는다`() {
         val settings = defaults.copy(excludedPackages = setOf(chat.packageName))
         assertEquals(skip(SkipReason.EXCLUDED_APP), evaluate(settings = settings))
     }
 
     @Test
-    fun `소리 없는 채널은 켜지 않고 중요도를 모르면 막지 않는다`() {
+    fun `사용이 일시정지된 앱은 켜지 않는다`() {
+        assertEquals(skip(SkipReason.SUSPENDED_APP), evaluate(notification = chat.copy(appSuspended = true)))
+    }
+
+    @Test
+    fun `소리 없는 채널과 무음 표시 알림은 켜지 않고 중요도를 모르면 막지 않는다`() {
         assertEquals(skip(SkipReason.SILENT), evaluate(notification = chat.copy(importance = 2)))
+        assertEquals(skip(SkipReason.SILENT), evaluate(notification = chat.copy(silentFlag = true)))
         assertEquals(Decision.Wake, evaluate(notification = chat.copy(importance = WakePolicy.IMPORTANCE_DEFAULT)))
         assertEquals(Decision.Wake, evaluate(notification = chat.copy(importance = null)))
+    }
+
+    @Test
+    fun `소리 없는 알림의 업데이트는 기록하지 않는다`() {
+        val update = chat.copy(isUpdate = true)
+        assertEquals(skip(SkipReason.SILENT_UPDATE), evaluate(notification = update.copy(silentFlag = true)))
+        assertEquals(skip(SkipReason.SILENT_UPDATE), evaluate(notification = update.copy(importance = 2)))
+        assertEquals(false, SkipReason.SILENT_UPDATE.recorded)
     }
 
     @Test
@@ -107,17 +132,38 @@ class WakePolicyTest {
     @Test
     fun `방해하지 않을 시간에는 켜지 않는다`() {
         val settings = defaults.copy(quietHours = QuietHours(enabled = true, startMinute = 23 * 60, endMinute = 7 * 60))
-        assertEquals(skip(SkipReason.QUIET_HOURS), evaluate(settings = settings, minuteOfDay = 2 * 60))
-        assertEquals(Decision.Wake, evaluate(settings = settings, minuteOfDay = 12 * 60))
+        assertEquals(skip(SkipReason.QUIET_HOURS), evaluate(settings = settings, timing = noon.copy(minuteOfDay = 2 * 60)))
+        assertEquals(Decision.Wake, evaluate(settings = settings))
     }
 
     @Test
     fun `간격 안에서는 한 번만 켠다`() {
         val settings = defaults.copy(cooldownSeconds = 5)
-        assertEquals(skip(SkipReason.COOLDOWN), evaluate(settings = settings, nowElapsedMs = 104_999, lastWakeElapsedMs = 100_000))
-        assertEquals(Decision.Wake, evaluate(settings = settings, nowElapsedMs = 105_000, lastWakeElapsedMs = 100_000))
-        assertEquals(Decision.Wake, evaluate(settings = settings, lastWakeElapsedMs = null))
-        assertEquals(Decision.Wake, evaluate(settings = defaults, nowElapsedMs = 100_001, lastWakeElapsedMs = 100_000))
+        assertEquals(
+            skip(SkipReason.COOLDOWN),
+            evaluate(settings = settings, timing = noon.copy(nowElapsedMs = 104_999, lastWakeElapsedMs = 100_000)),
+        )
+        assertEquals(
+            Decision.Wake,
+            evaluate(settings = settings, timing = noon.copy(nowElapsedMs = 105_000, lastWakeElapsedMs = 100_000)),
+        )
+        assertEquals(Decision.Wake, evaluate(settings = settings))
+        assertEquals(
+            Decision.Wake,
+            evaluate(settings = defaults, timing = noon.copy(nowElapsedMs = 100_001, lastWakeElapsedMs = 100_000)),
+        )
+    }
+
+    @Test
+    fun `같은 앱 간격은 그 앱에만 적용된다`() {
+        val settings = defaults.copy(perAppCooldownSeconds = 60)
+        val justWokeForThisApp = noon.copy(nowElapsedMs = 130_000, lastAppWakeElapsedMs = 100_000)
+        assertEquals(skip(SkipReason.APP_COOLDOWN), evaluate(settings = settings, timing = justWokeForThisApp))
+        assertEquals(Decision.Wake, evaluate(settings = settings, timing = noon.copy(lastWakeElapsedMs = 90_000)))
+        assertEquals(
+            Decision.Wake,
+            evaluate(settings = settings, timing = noon.copy(nowElapsedMs = 160_000, lastAppWakeElapsedMs = 100_000)),
+        )
     }
 
     @Test
@@ -127,7 +173,30 @@ class WakePolicyTest {
         assertEquals(SkipReason.IN_POCKET, WakePolicy.evaluatePosture(PostureFacts(near = true), settings))
         assertNull(WakePolicy.evaluatePosture(PostureFacts(faceDown = false, near = false), settings))
         assertNull(WakePolicy.evaluatePosture(PostureFacts(), settings))
-        assertNull(WakePolicy.evaluatePosture(PostureFacts(faceDown = true, near = true), WakeSettings(skipWhenFaceDown = false, skipWhenInPocket = false)))
+        assertNull(
+            WakePolicy.evaluatePosture(
+                PostureFacts(faceDown = true, near = true),
+                WakeSettings(skipWhenFaceDown = false, skipWhenInPocket = false),
+            ),
+        )
+    }
+
+    @Test
+    fun `어두운데 세워져 있으면 주머니 속으로 보고, 어두워도 눕혀져 있으면 아니다`() {
+        val settings = WakeSettings(skipWhenFaceDown = false, skipWhenInPocket = true)
+        assertEquals(SkipReason.IN_POCKET, WakePolicy.evaluatePosture(PostureFacts(dark = true, flat = false), settings))
+        assertNull(WakePolicy.evaluatePosture(PostureFacts(dark = true, flat = true), settings))
+        assertNull(WakePolicy.evaluatePosture(PostureFacts(dark = false, flat = false), settings))
+        assertNull(WakePolicy.evaluatePosture(PostureFacts(dark = true, flat = null), settings))
+    }
+
+    @Test
+    fun `AOD 등 화면이 켜진 상태에서는 설정에 따라 기본 방식을 쓴다`() {
+        val avoiding = WakeSettings(method = WakeMethod.MENU_KEY, avoidMenuKeyWhenDozing = true)
+        assertEquals(WakeMethod.WAKE_LOCK, WakePolicy.chooseMethod(avoiding, keyReachesLockScreen = true))
+        assertEquals(WakeMethod.MENU_KEY, WakePolicy.chooseMethod(avoiding, keyReachesLockScreen = false))
+        assertEquals(WakeMethod.MENU_KEY, WakePolicy.chooseMethod(avoiding.copy(avoidMenuKeyWhenDozing = false), true))
+        assertEquals(WakeMethod.WAKE_LOCK, WakePolicy.chooseMethod(avoiding.copy(method = WakeMethod.WAKE_LOCK), false))
     }
 
     private companion object {

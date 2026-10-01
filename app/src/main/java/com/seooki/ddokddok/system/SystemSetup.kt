@@ -11,30 +11,46 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import com.seooki.ddokddok.core.WakeMethod
+import com.seooki.ddokddok.service.AccessibilityBridge
 import com.seooki.ddokddok.service.ScreenWakeAccessibilityService
 import com.seooki.ddokddok.service.WakeNotificationListener
 
 data class SetupStatus(
     val notificationAccess: Boolean,
     val accessibilityEnabled: Boolean,
+    val accessibilityConnected: Boolean,
     val batteryUnrestricted: Boolean,
+    val notificationsAllowed: Boolean,
     val menuKeySupported: Boolean,
 ) {
-    val essentialsDone: Boolean get() = notificationAccess && accessibilityEnabled
-    val missingEssentials: Int get() = listOf(notificationAccess, accessibilityEnabled).count { !it }
+    /** 설정에서는 켜져 있는데 실제로 연결되지 않은 상태. 앱이 비정상 종료되면 생기고, 껐다 켜야 풀린다. */
+    val accessibilityStuck: Boolean get() = accessibilityEnabled && !accessibilityConnected
+
+    /** 전원 버튼 방식을 쓸 때만 접근성이 꼭 필요하다. 기본 방식에서는 권장이다(삼성은 화면 켜기에 필요할 수 있다). */
+    fun accessibilityRequired(method: WakeMethod): Boolean = method == WakeMethod.MENU_KEY && menuKeySupported
+
+    fun missingEssentials(method: WakeMethod): Int =
+        listOf(notificationAccess, !accessibilityRequired(method) || accessibilityEnabled).count { !it }
+
+    fun essentialsDone(method: WakeMethod): Boolean = missingEssentials(method) == 0
 }
 
 /** 권한 상태를 읽고, 사용자가 켜야 하는 시스템 설정 화면을 연다. */
 object SystemSetup {
 
-    fun status(context: Context) = SetupStatus(
-        notificationAccess = context.getSystemService(NotificationManager::class.java)
-            .isNotificationListenerAccessGranted(listenerComponent(context)),
-        accessibilityEnabled = isAccessibilityEnabled(context),
-        batteryUnrestricted = context.getSystemService(PowerManager::class.java)
-            .isIgnoringBatteryOptimizations(context.packageName),
-        menuKeySupported = Build.VERSION.SDK_INT >= 36,
-    )
+    fun status(context: Context): SetupStatus {
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        return SetupStatus(
+            notificationAccess = notificationManager.isNotificationListenerAccessGranted(listenerComponent(context)),
+            accessibilityEnabled = isAccessibilityEnabled(context),
+            accessibilityConnected = AccessibilityBridge.service.value != null,
+            batteryUnrestricted = context.getSystemService(PowerManager::class.java)
+                .isIgnoringBatteryOptimizations(context.packageName),
+            notificationsAllowed = notificationManager.areNotificationsEnabled(),
+            menuKeySupported = Build.VERSION.SDK_INT >= 36,
+        )
+    }
 
     fun openNotificationAccess(context: Context) {
         val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
@@ -51,6 +67,18 @@ object SystemSetup {
 
     fun openAppDetails(context: Context) {
         start(context, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri(context)))
+    }
+
+    fun openAppNotificationSettings(context: Context) {
+        start(
+            context,
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+            fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri(context)),
+        )
+    }
+
+    fun openSecuritySettings(context: Context) {
+        start(context, Intent(Settings.ACTION_SECURITY_SETTINGS), fallback = Intent(Settings.ACTION_SETTINGS))
     }
 
     // 알림 감지가 절전 기능에 끊기면 앱의 핵심 기능이 멈추므로, 설정 화면 대신 시스템 확인 창으로 바로 묻는다.

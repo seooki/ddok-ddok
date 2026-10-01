@@ -33,6 +33,7 @@ class SettingsRepository(context: Context, private val defaultMethod: WakeMethod
         val defaults = WakeSettings(method = defaultMethod)
         return WakeSettings(
             enabled = prefs.getBoolean(KEY_ENABLED, defaults.enabled),
+            snoozeUntilEpochMs = prefs.getLong(KEY_SNOOZE_UNTIL, defaults.snoozeUntilEpochMs),
             method = WakeMethod.fromKey(prefs.getString(KEY_METHOD, null)) ?: defaults.method,
             fallbackToWakeLock = prefs.getBoolean(KEY_FALLBACK, defaults.fallbackToWakeLock),
             avoidMenuKeyWhenDozing = prefs.getBoolean(KEY_AVOID_MENU_KEY_WHEN_DOZING, defaults.avoidMenuKeyWhenDozing),
@@ -40,6 +41,8 @@ class SettingsRepository(context: Context, private val defaultMethod: WakeMethod
             skipWhenFaceDown = prefs.getBoolean(KEY_SKIP_FACE_DOWN, defaults.skipWhenFaceDown),
             skipWhenInPocket = prefs.getBoolean(KEY_SKIP_POCKET, defaults.skipWhenInPocket),
             cooldownSeconds = prefs.getInt(KEY_COOLDOWN, defaults.cooldownSeconds),
+            perAppCooldownSeconds = prefs.getInt(KEY_PER_APP_COOLDOWN, defaults.perAppCooldownSeconds),
+            autoOffSeconds = prefs.getInt(KEY_AUTO_OFF, defaults.autoOffSeconds),
             quietHours = QuietHours(
                 enabled = prefs.getBoolean(KEY_QUIET_ENABLED, defaults.quietHours.enabled),
                 startMinute = prefs.getInt(KEY_QUIET_START, defaults.quietHours.startMinute),
@@ -52,6 +55,7 @@ class SettingsRepository(context: Context, private val defaultMethod: WakeMethod
 
     private fun write(settings: WakeSettings) = prefs.edit {
         putBoolean(KEY_ENABLED, settings.enabled)
+        putLong(KEY_SNOOZE_UNTIL, settings.snoozeUntilEpochMs)
         putString(KEY_METHOD, settings.method.key)
         putBoolean(KEY_FALLBACK, settings.fallbackToWakeLock)
         putBoolean(KEY_AVOID_MENU_KEY_WHEN_DOZING, settings.avoidMenuKeyWhenDozing)
@@ -59,6 +63,8 @@ class SettingsRepository(context: Context, private val defaultMethod: WakeMethod
         putBoolean(KEY_SKIP_FACE_DOWN, settings.skipWhenFaceDown)
         putBoolean(KEY_SKIP_POCKET, settings.skipWhenInPocket)
         putInt(KEY_COOLDOWN, settings.cooldownSeconds)
+        putInt(KEY_PER_APP_COOLDOWN, settings.perAppCooldownSeconds)
+        putInt(KEY_AUTO_OFF, settings.autoOffSeconds)
         putBoolean(KEY_QUIET_ENABLED, settings.quietHours.enabled)
         putInt(KEY_QUIET_START, settings.quietHours.startMinute)
         putInt(KEY_QUIET_END, settings.quietHours.endMinute)
@@ -71,6 +77,7 @@ class SettingsRepository(context: Context, private val defaultMethod: WakeMethod
     private companion object {
         const val PREFS_NAME = "settings"
         const val KEY_ENABLED = "enabled"
+        const val KEY_SNOOZE_UNTIL = "snooze_until_epoch_ms"
         const val KEY_METHOD = "method"
         const val KEY_FALLBACK = "fallback_to_wake_lock"
         const val KEY_AVOID_MENU_KEY_WHEN_DOZING = "avoid_menu_key_when_dozing"
@@ -78,6 +85,8 @@ class SettingsRepository(context: Context, private val defaultMethod: WakeMethod
         const val KEY_SKIP_FACE_DOWN = "skip_face_down"
         const val KEY_SKIP_POCKET = "skip_in_pocket"
         const val KEY_COOLDOWN = "cooldown_seconds"
+        const val KEY_PER_APP_COOLDOWN = "per_app_cooldown_seconds"
+        const val KEY_AUTO_OFF = "auto_off_seconds"
         const val KEY_QUIET_ENABLED = "quiet_enabled"
         const val KEY_QUIET_START = "quiet_start_minute"
         const val KEY_QUIET_END = "quiet_end_minute"

@@ -5,15 +5,17 @@ import android.content.Intent
 import android.os.PowerManager
 import android.view.accessibility.AccessibilityEvent
 import androidx.annotation.RequiresApi
+import com.seooki.ddokddok.appGraph
 
 /**
- * 화면을 전원 버튼처럼 켜기 위한 접근성 서비스.
- * 화면 내용은 읽지 않고(canRetrieveWindowContent=false), 화면이 꺼져 있을 때 메뉴 키 신호를 보내는 일만 한다.
+ * 화면을 전원 버튼처럼 켜고 끄기 위한 접근성 서비스.
+ * 화면 내용은 읽지 않고(canRetrieveWindowContent=false), 메뉴 키 신호와 화면 잠금 동작만 쓴다.
  */
 class ScreenWakeAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         AccessibilityBridge.attach(this)
+        applicationContext.appGraph.statusNotifier.clearAccessibilityProblem()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
@@ -39,4 +41,7 @@ class ScreenWakeAccessibilityService : AccessibilityService() {
         if (getSystemService(PowerManager::class.java).isInteractive) return false
         return performGlobalAction(GLOBAL_ACTION_MENU)
     }
+
+    /** 전원 버튼을 눌러 끈 것처럼 화면을 끈다. 기기 관리자 방식과 달리 다음 잠금 해제 때 지문·얼굴 인식이 그대로 된다. */
+    fun lockScreen(): Boolean = performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
 }

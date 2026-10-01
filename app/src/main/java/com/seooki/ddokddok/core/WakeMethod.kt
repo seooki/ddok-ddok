@@ -34,6 +34,10 @@ enum class TestResult(val key: String) {
 enum class FailReason { ACCESSIBILITY_OFF, UNSUPPORTED, REJECTED, NO_RESPONSE }
 
 sealed interface WakeResult {
-    data class Woke(val method: WakeMethod, val usedFallback: Boolean) : WakeResult
+    /** [primaryFailure]가 있으면 처음 방식이 실패해서 [method](기본 방식)로 대신 켠 것이다. */
+    data class Woke(val method: WakeMethod, val primaryFailure: FailReason? = null) : WakeResult {
+        val usedFallback: Boolean get() = primaryFailure != null
+    }
+
     data class Failed(val reason: FailReason) : WakeResult
 }
