@@ -3,12 +3,15 @@ package com.seooki.ddokddok.wake
 import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Context
+import android.media.AudioAttributes
 import android.media.AudioManager
 import android.os.PowerManager
 import android.os.SystemClock
 import android.service.notification.NotificationListenerService.Ranking
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
+import com.seooki.ddokddok.core.AodWaitLearner
+import com.seooki.ddokddok.core.CallState
 import com.seooki.ddokddok.core.Decision
 import com.seooki.ddokddok.core.DeviceFacts
 import com.seooki.ddokddok.core.DisplayKind
@@ -24,6 +27,7 @@ import com.seooki.ddokddok.core.WakePolicy
 import com.seooki.ddokddok.core.WakeResult
 import com.seooki.ddokddok.core.WakeSettings
 import com.seooki.ddokddok.core.WakeTiming
+import com.seooki.ddokddok.data.DecisionTrace
 import com.seooki.ddokddok.data.EventOutcome
 import com.seooki.ddokddok.data.SettingsRepository
 import com.seooki.ddokddok.data.WakeDetail
@@ -46,6 +50,7 @@ class WakeController(
     private val context: Context,
     private val settings: SettingsRepository,
     private val events: WakeEventLog,
+    private val trace: DecisionTrace,
     private val waker: ScreenWaker,
     private val posture: PostureSampler,
     private val statusNotifier: StatusNotifier,
@@ -76,6 +81,10 @@ class WakeController(
 
     // 화면이 꺼지거나 잠금이 풀리면 자동 끄기를 취소한다.
     private val tracker = ScreenTracker(context) { autoOff?.cancel() }
+    private val aodWait = AodWaitLearner()
+
+    /** 진단 정보에 넣을 AOD 대기 학습 상태. */
+    val aodWaitSummary: String get() = aodWait.summary
 
     /** 알림을 받은 순간의 상황. 시각은 부팅 후 시간이다. */
     private class Arrival(
@@ -102,14 +111,20 @@ class WakeController(
     fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         val previousPostTime = postTimes.put(sbn.key, sbn.postTime)
         val current = settings.current
-        if (!current.enabled) return
+        if (!current.enabled) {
+            note(sbn.packageName, "DISABLED")
+            return
+        }
         val nowMs = SystemClock.elapsedRealtime()
         val nowEpochMs = System.currentTimeMillis()
         val postedMs = nowMs - (nowEpochMs - sbn.postTime).coerceAtLeast(0)
         val screenOn = powerManager.isInteractive
         // 가장 흔한 경우(사람이 화면을 보고 있음)는 시각 계산만으로 끝낸다.
         val wokenByOther = screenOn && isWokenByOther(postedMs, nowMs)
-        if (screenOn && !wokenByOther) return
+        if (screenOn && !wokenByOther) {
+            note(sbn.packageName, "SCREEN_ON")
+            return
+        }
         val arrival = Arrival(nowMs, postedMs, displayOff = !screenOn && waker.isDisplayOff, wokenByOther = wokenByOther)
         val facts = NotificationFactsReader.read(sbn, rankingMap, previousPostTime, nowEpochMs)
         evaluateAndWake(sbn.key, facts, current, arrival)
@@ -153,11 +168,12 @@ class WakeController(
         val device = DeviceFacts(
             // 알림과 함께 다른 쪽이 켠 화면은 꺼져 있던 것으로 보고 판단한다.
             screenOn = powerManager.isInteractive && !arrival.wokenByOther,
-            inCall = audioManager.mode != AudioManager.MODE_NORMAL,
+            inCall = CallState.isInCall(audioManager.mode) { isVoiceCallAudioPlaying() },
         )
         val decision = WakePolicy.evaluate(facts, device, current, context.packageName, timing(facts.packageName))
         when (decision) {
             is Decision.Skip -> {
+                note(facts.packageName, decision.reason.name + lateSuffix(facts))
                 if (decision.reason == SkipReason.DND) {
                     skipForDnd(key, facts)
                 } else {
@@ -167,9 +183,16 @@ class WakeController(
             Decision.Wake -> {
                 // 요약·개별 알림이 한꺼번에 오면 한 번만 켠다.
                 if (inFlight?.isActive == true) {
+                    note(facts.packageName, "BUSY")
                     record(facts.packageName, EventOutcome.Skipped(SkipReason.BUSY))
                     return
                 }
+                val shown = when {
+                    arrival.wokenByOther -> "다른쪽이켬"
+                    arrival.displayOff -> "꺼짐"
+                    else -> "밝음"
+                }
+                note(facts.packageName, "WAKE 받을때화면=$shown" + lateSuffix(facts))
                 inFlight = scope.launch { wake(facts.packageName, current, arrival) }
             }
         }
@@ -193,6 +216,7 @@ class WakeController(
             if (current.skipWhenFaceDown || current.skipWhenInPocket) {
                 val facts = posture.sample(current.skipWhenFaceDown, current.skipWhenInPocket)
                 WakePolicy.evaluatePosture(facts, current)?.let { reason ->
+                    note(packageName, reason.name)
                     record(packageName, EventOutcome.Skipped(reason))
                     return
                 }
@@ -206,21 +230,34 @@ class WakeController(
             waker.awaitDisplaySettled()
             // 삼성 알림 팝업·엣지 라이팅처럼 알림 때문에 잠깐 밝아졌으면, 사라질 때까지 기다린다.
             // 이때 메뉴 키를 보내면 팝업이나 잠금화면 쪽으로 가서 전원 버튼처럼 켜지지 않는다.
+            // AOD를 늘 띄우거나 새 알림이 있는 동안 계속 띄우는 폰이면 기다려도 꺼지지 않으니, 그렇게 배웠으면 기다리지 않는다.
             var waitedMs = 0L
             if (!rewoke && DisplayWait.shouldWait(arrival.displayOff, waker.isDisplayOff, tracker.leftOffAtMs, arrival.atMs)) {
-                val startedMs = SystemClock.elapsedRealtime()
-                waker.awaitDisplayOff(DisplayWait.MAX_WAIT_MS)
-                waitedMs = SystemClock.elapsedRealtime() - startedMs
-                if (waker.isScreenOn) {
-                    if (!turnOffIfWokenByOther(packageName, current, arrival)) return
-                    rewoke = true
+                if (aodWait.shouldWait()) {
+                    val startedMs = SystemClock.elapsedRealtime()
+                    waker.awaitDisplayOff(DisplayWait.MAX_WAIT_MS)
+                    waitedMs = SystemClock.elapsedRealtime() - startedMs
+                    if (waker.isScreenOn) {
+                        note(packageName, "WAIT ${waitedMs}ms 그사이켜짐")
+                        if (!turnOffIfWokenByOther(packageName, current, arrival)) return
+                        rewoke = true
+                    } else {
+                        aodWait.record(wentOff = waker.isDisplayOff)
+                        note(packageName, "WAIT ${waitedMs}ms " + if (waker.isDisplayOff) "꺼짐" else "안꺼짐")
+                    }
+                } else {
+                    note(packageName, "WAIT 건너뜀(AOD가 계속 떠 있는 폰)")
                 }
             }
-            if (waker.isScreenOn) return
+            if (waker.isScreenOn) {
+                note(packageName, "켜져있어서둠")
+                return
+            }
             val display = waker.displayKind
             val method = WakePolicy.chooseMethod(current, keyReachesLockScreen = display != DisplayKind.OFF)
             val result = waker.wake(method, current.fallbackToWakeLock)
             afterWake(packageName, method, result, current, displayWasOff = display == DisplayKind.OFF)
+            note(packageName, "RESULT ${resultCode(result)} 화면=${display.key}" + if (rewoke) " 다시켬" else "")
             record(packageName, result.toOutcome(), WakeDetail(display, waitedMs, rewoke))
         } finally {
             if (pipelineLock.isHeld) pipelineLock.release()
@@ -232,8 +269,15 @@ class WakeController(
      * 사람이 켠 화면이면 그대로 두고 false다. 다시 켜지 않도록 했거나 끄지 못했으면 그렇게 기록하고 false다.
      */
     private suspend fun turnOffIfWokenByOther(packageName: String, current: WakeSettings, arrival: Arrival): Boolean {
-        if (!isWokenByOther(arrival.postedMs, SystemClock.elapsedRealtime())) return false
-        if (current.rewakeWhenOthersWake && current.method == WakeMethod.MENU_KEY && waker.turnOffForRewake()) return true
+        if (!isWokenByOther(arrival.postedMs, SystemClock.elapsedRealtime())) {
+            note(packageName, "켜져있어서둠")
+            return false
+        }
+        if (current.rewakeWhenOthersWake && current.method == WakeMethod.MENU_KEY && waker.turnOffForRewake()) {
+            note(packageName, "다른쪽이켠화면끔")
+            return true
+        }
+        note(packageName, "WOKEN_BY_OTHER")
         record(packageName, EventOutcome.Skipped(SkipReason.WOKEN_BY_OTHER))
         return false
     }
@@ -302,6 +346,22 @@ class WakeController(
         )
     }
 
+    /** 통화 음성이 재생 중인지. 통신 모드일 때만 묻는다. */
+    private fun isVoiceCallAudioPlaying(): Boolean = audioManager.activePlaybackConfigurations.any {
+        it.audioAttributes.usage == AudioAttributes.USAGE_VOICE_COMMUNICATION
+    }
+
+    /** 진단 정보에 남길 판단. 최근 기록에 남지 않는 판단까지 담는다. */
+    private fun note(packageName: String, decision: String) = trace.add(packageName, decision)
+
+    private fun lateSuffix(facts: NotificationFacts): String =
+        if (facts.postAgeMs > LATE_NOTE_MS) " 늦게받음=${facts.postAgeMs}ms" else ""
+
+    private fun resultCode(result: WakeResult): String = when (result) {
+        is WakeResult.Woke -> result.method.key + (result.primaryFailure?.let { "(대체:${it.name})" } ?: "")
+        is WakeResult.Failed -> "실패:${result.reason.name}"
+    }
+
     private fun record(
         packageName: String,
         outcome: EventOutcome,
@@ -317,6 +377,9 @@ class WakeController(
         /** 센서 확인, 다른 쪽이 켠 화면 끄기, 알림 팝업 기다리기(최대 6초), 켜기 확인을 모두 덮는다. */
         const val PIPELINE_TIMEOUT_MS = 13_000L
         const val SEEN_KEYS_MAX = 256
+
+        /** 진단 정보에 늦게 받았다고 적는 기준. */
+        const val LATE_NOTE_MS = 2_000L
 
         /** 연결할 때 이미 떠 있던 알림. 게시 시각은 모르므로 재전송 판단에는 쓰지 않는다. */
         const val UNKNOWN_POST_TIME = Long.MIN_VALUE

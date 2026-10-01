@@ -8,6 +8,7 @@ import android.app.Person
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.PowerManager
 
 /**
@@ -64,6 +65,9 @@ class PostReceiver : BroadcastReceiver() {
                 manager.notify(36, base(context, CHANNEL_DEFAULT, "self wake").build())
                 wakeScreen(context)
             }
+            // 음성 채팅·회의 앱이 백그라운드에서 통신 모드를 잡고 있는 상황(통화 음성은 나오지 않음)을 흉내 낸다.
+            "comm_mode_on" -> context.getSystemService(AudioManager::class.java).mode = AudioManager.MODE_IN_COMMUNICATION
+            "comm_mode_off" -> context.getSystemService(AudioManager::class.java).mode = AudioManager.MODE_NORMAL
             "cancel_all" -> manager.cancelAll()
         }
     }

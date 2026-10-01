@@ -77,6 +77,13 @@ class WakePolicyTest {
     }
 
     @Test
+    fun `조금 늦게 받은 알림은 켜고 너무 늦으면 기록만 남긴다`() {
+        assertEquals(Decision.Wake, evaluate(notification = chat.copy(postAgeMs = 15_000)))
+        assertEquals(skip(SkipReason.LATE), evaluate(notification = chat.copy(postAgeMs = WakePolicy.LATE_LIMIT_MS + 1)))
+        assertEquals(true, SkipReason.LATE.recorded)
+    }
+
+    @Test
     fun `소리 없는 알림의 업데이트는 기록하지 않는다`() {
         val update = chat.copy(isUpdate = true)
         assertEquals(skip(SkipReason.SILENT_UPDATE), evaluate(notification = update.copy(silentFlag = true)))

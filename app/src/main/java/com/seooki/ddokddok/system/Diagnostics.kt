@@ -48,10 +48,15 @@ object Diagnostics {
                     " 조용한시간=${if (settings.quietHours.isEffective) "${settings.quietHours.startMinute}-${settings.quietHours.endMinute}" else "없음"}" +
                     " 제외앱=${settings.excludedPackages.size}",
             )
+            appendLine("AOD 대기: ${graph.controller.aodWaitSummary}")
             appendLine("기록 ${events.size}건: ${summarize(events)}")
             appendLine("최근 기록(최신순):")
             events.takeLast(RECENT).asReversed().forEach {
                 appendLine("  ${time(it.timeMillis)} ${it.packageName} ${code(it.outcome)}${detail(it.detail)}")
+            }
+            appendLine("최근 판단(최신순, 기록하지 않는 판단 포함, 앱이 다시 시작되면 사라짐):")
+            graph.trace.snapshot().asReversed().forEach {
+                appendLine("  ${time(it.timeMillis)} ${it.packageName} ${it.decision}")
             }
         }
     }

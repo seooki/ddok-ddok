@@ -203,6 +203,7 @@
     <string name="skip_own_app">똑똑 알림</string>
     <string name="skip_ongoing">진행 중 알림</string>
     <string name="skip_repost">시스템이 다시 보낸 알림</string>
+    <string name="skip_late">너무 늦게 받은 알림</string>
     <string name="skip_suspended_app">사용이 일시정지된 앱</string>
     <string name="skip_app_cooldown">같은 앱 간격 대기</string>
     <string name="skip_group_silent">묶음 알림</string>

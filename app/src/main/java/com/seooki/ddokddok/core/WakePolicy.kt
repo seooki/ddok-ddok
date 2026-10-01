@@ -8,6 +8,9 @@ enum class SkipReason(val recorded: Boolean) {
     OWN_APP(false),
     ONGOING(false),
     REPOST(false),
+
+    /** 똑똑이 잠시 멈춰 있다가 너무 늦게 받은 알림. 소리는 이미 났고, 이제 켜면 엉뚱한 때 켜진다. */
+    LATE(true),
     GROUP_SILENT(false),
     ALERT_ONCE_UPDATE(false),
     BUSY(false),
@@ -43,6 +46,9 @@ sealed interface Decision {
 object WakePolicy {
     /** NotificationManager.IMPORTANCE_DEFAULT. 이보다 낮은 채널은 소리가 나지 않는다. */
     const val IMPORTANCE_DEFAULT = 3
+
+    /** 이보다 늦게 받은 알림은 켜지 않는다. 그 안이면 조금 늦더라도 켠다. */
+    const val LATE_LIMIT_MS = 30_000L
 
     fun evaluate(
         notification: NotificationFacts,
@@ -87,6 +93,7 @@ object WakePolicy {
         n.packageName == ownPackage -> SkipReason.OWN_APP
         n.isOngoing -> SkipReason.ONGOING
         n.isRepost -> SkipReason.REPOST
+        n.postAgeMs > LATE_LIMIT_MS -> SkipReason.LATE
         n.packageName in settings.excludedPackages -> SkipReason.EXCLUDED_APP
         n.appSuspended -> SkipReason.SUSPENDED_APP
         n.silentFlag || (n.importance != null && n.importance < IMPORTANCE_DEFAULT) ->

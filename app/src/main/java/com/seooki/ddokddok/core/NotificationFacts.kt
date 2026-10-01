@@ -14,6 +14,8 @@ data class NotificationFacts(
     val isUpdate: Boolean = false,
     /** 시스템이 이미 있던 알림을 다시 보낸 것([Repost]). 소리를 내지 않는다. */
     val isRepost: Boolean = false,
+    /** 게시된 뒤 똑똑이 받기까지 걸린 시간. 보통 1초 안쪽이고, 똑똑이 잠시 멈춰 있었으면 길어진다. */
+    val postAgeMs: Long = 0,
     /** 채널 중요도(NotificationManager.IMPORTANCE_*). 알 수 없으면 null. */
     val importance: Int? = null,
     /** Android 16부터 시스템이 무음 알림(setSilent)에 붙이는 표시. */

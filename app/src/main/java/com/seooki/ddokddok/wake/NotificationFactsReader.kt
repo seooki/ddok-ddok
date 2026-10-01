@@ -44,6 +44,7 @@ object NotificationFactsReader {
             onlyAlertOnce = flags and Notification.FLAG_ONLY_ALERT_ONCE != 0,
             isUpdate = previousPostTime != null,
             isRepost = Repost.detect(sbn.postTime, previousPostTime, nowEpochMs),
+            postAgeMs = (nowEpochMs - sbn.postTime).coerceAtLeast(0),
             importance = if (ranked) ranking.importance else null,
             silentFlag = flags and FLAG_SILENT != 0,
             appSuspended = ranked && ranking.isSuspended,

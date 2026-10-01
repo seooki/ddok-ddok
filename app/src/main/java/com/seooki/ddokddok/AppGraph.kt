@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Build
 import com.seooki.ddokddok.core.WakeMethod
 import com.seooki.ddokddok.data.AppCatalog
+import com.seooki.ddokddok.data.DecisionTrace
 import com.seooki.ddokddok.data.SettingsRepository
 import com.seooki.ddokddok.data.WakeEventLog
 import com.seooki.ddokddok.service.WakeTileService
@@ -33,7 +34,10 @@ class AppGraph(app: Application) {
     )
     val events = WakeEventLog(File(app.noBackupFilesDir, "wake_events.tsv"), scope, Dispatchers.IO)
     val apps = AppCatalog(app)
-    val controller = WakeController(app, settings, events, waker, posture, statusNotifier, scope)
+
+    /** 최근 판단(기록하지 않는 것 포함). 진단 정보에만 쓴다. */
+    val trace = DecisionTrace()
+    val controller = WakeController(app, settings, events, trace, waker, posture, statusNotifier, scope)
     val wakeTest = WakeTestRunner(app, waker, settings, scope)
 
     val canDetectPocket: Boolean get() = posture.canDetectPocket

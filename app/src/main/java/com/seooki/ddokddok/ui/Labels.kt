@@ -51,6 +51,7 @@ fun SkipReason.labelRes(): Int = when (this) {
     SkipReason.OWN_APP -> R.string.skip_own_app
     SkipReason.ONGOING -> R.string.skip_ongoing
     SkipReason.REPOST -> R.string.skip_repost
+    SkipReason.LATE -> R.string.skip_late
     SkipReason.SUSPENDED_APP -> R.string.skip_suspended_app
     SkipReason.APP_COOLDOWN -> R.string.skip_app_cooldown
     SkipReason.WOKEN_BY_OTHER -> R.string.skip_woken_by_other

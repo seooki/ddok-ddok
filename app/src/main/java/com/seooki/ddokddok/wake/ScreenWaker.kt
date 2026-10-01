@@ -93,8 +93,11 @@ class ScreenWaker(context: Context) {
 
     /** [method]로 켜 보고, 안 켜지면 [allowFallback]일 때 기본 방식으로 한 번 더 켠다. */
     suspend fun wake(method: WakeMethod, allowFallback: Boolean): WakeResult {
+        // 화면이 완전히 꺼져 있으면 메뉴 키는 곧바로 켠다. AOD·알림 팝업이 떠 있으면 메뉴 키가 그쪽으로 가서
+        // 켜지지 않을 때가 많으니, 짧게만 확인하고 대체 방식으로 넘어가 늦게 켜지지 않게 한다.
+        val verifyMs = if (method == WakeMethod.MENU_KEY && !isDisplayOff) QUICK_VERIFY_MS else VERIFY_TIMEOUT_MS
         val triggerFailure = trigger(method)
-        if (triggerFailure == null && awaitScreenOn()) return WakeResult.Woke(method)
+        if (triggerFailure == null && awaitScreenOn(verifyMs)) return WakeResult.Woke(method)
         // 확인 시간을 살짝 넘겨 켜졌다면 성공으로 본다.
         if (triggerFailure == null && isScreenOn) return WakeResult.Woke(method)
         val failure = triggerFailure ?: FailReason.NO_RESPONSE
@@ -140,6 +143,7 @@ class ScreenWaker(context: Context) {
         const val SCREEN_WAKE_LOCK_TAG = "ddokddok:screen"
         const val SCREEN_WAKE_LOCK_MS = 1_000L
         const val VERIFY_TIMEOUT_MS = 1_000L
+        const val QUICK_VERIFY_MS = 500L
         const val SETTLE_TIMEOUT_MS = 1_000L
         const val REWAKE_OFF_TIMEOUT_MS = 1_000L
         const val POLL_INTERVAL_MS = 50L

@@ -4,7 +4,7 @@
 
 ## 설치 파일 받기
 
-[ddokddok-0.1.3.apk 내려받기](https://github.com/seooki/ddok-ddok/raw/main/release/ddokddok-0.1.3.apk) (Android 12 이상, 전원 버튼 방식은 Android 16 이상)
+[ddokddok-0.1.4.apk 내려받기](https://github.com/seooki/ddok-ddok/raw/main/release/ddokddok-0.1.4.apk) (Android 12 이상, 전원 버튼 방식은 Android 16 이상)
 
 같은 파일이 [Releases](https://github.com/seooki/ddok-ddok/releases/latest)에도 있다. Obtainium 앱에 이 저장소 주소(`https://github.com/seooki/ddok-ddok`)를 추가해 두면 새 버전이 나왔을 때 알려 주고 바로 설치할 수 있다.
 
@@ -13,6 +13,15 @@
 3. '화면 켜기 테스트'를 AOD를 끈 상태와 켠 상태에서 한 번씩 해 본다.
 
 이전 버전을 쓰고 있으면 지우지 말고 그대로 덮어 설치한다. 같은 키로 서명되어 설정·기록·권한이 그대로 남는다. 0.1.1에서 올라오면 0.1.2에서 새로 생긴 '문제가 생기면 알림 받기'만 허용해 준다.
+
+### 0.1.4에서 달라진 점
+
+0.1.3에서 카카오톡 알림이 울렸는데 화면이 켜지지 않았다는 제보를 바탕으로, 그럴 수 있는 경로를 고쳤다.
+
+- AOD·알림 팝업이 떠 있을 때 기다리는 시간을 최대 6초에서 3초로 줄였다. AOD가 알림 뒤에도 계속 떠 있는 폰이면(두 번 연속 꺼지지 않으면) 기다리지 않는다. AOD 상태에서 메뉴 키가 반응하지 않으면 0.5초 만에 기본 방식으로 켠다. 0.1.3은 이때 7초쯤 지나서야 켜서, 그 사이에는 켜지지 않은 것처럼 보였다.
+- 음성 채팅·회의 앱이 통신 모드를 잡고 있어도, 통화 음성이 나오지 않으면 통화 중으로 보지 않는다.
+- 똑똑이 잠시 멈춰 있다가 늦게 받은 새 알림을 시스템 재전송으로 잘못 보고 조용히 버리던 문제를 고쳤다. 30초 안이면 켜고, 더 늦으면 켜지 않고 '너무 늦게 받은 알림'으로 남긴다.
+- 진단 정보에 최근 판단(최근 기록에 남지 않는 판단까지)과 AOD 대기 학습 상태를 넣었다. 다시 안 켜지면 알림 직후 정보 > 진단 정보 복사로 원인을 볼 수 있다.
 
 ### 0.1.3에서 달라진 점
 
@@ -48,9 +57,9 @@
 다른 기능과 겹칠 때(`wake/WakeController`, `core/ForeignWake`, `core/DisplayWait`):
 
 - 알림이 게시되고 1.5초 안에 다른 쪽이 화면을 켰고 잠금이 그대로면, 그 화면을 접근성 서비스로 끄고(`GLOBAL_ACTION_LOCK_SCREEN`) 다 꺼지면 메뉴 키로 다시 켠다. 똑똑이 방금 켠 화면이나 사람이 먼저 켜 둔 화면은 건드리지 않는다.
-- 화면이 완전히 꺼지지 않은 상태(AOD·알림 팝업)에서는 메뉴 키가 잠금화면이나 팝업으로 전달된다(`PhoneWindowManager`). 알림 때문에 방금 밝아진 것이면 꺼질 때까지 기다리고, AOD를 늘 켜 두어 원래 밝던 것이면 바로 보낸다.
+- 화면이 완전히 꺼지지 않은 상태(AOD·알림 팝업)에서는 메뉴 키가 잠금화면이나 팝업으로 전달된다(`PhoneWindowManager`). 알림 때문에 방금 밝아진 것이면 꺼질 때까지 최대 3초 기다린다. AOD를 늘 켜 두어 원래 밝던 것이면, 또는 기다려도 꺼지지 않는 폰이라고 배웠으면(`core/AodWaitLearner`) 바로 보낸다. 이때 메뉴 키가 0.5초 안에 반응하지 않으면 기본 방식으로 켠다.
 
-켜지 않는 경우: 쉬는 중, 화면이 켜져 있음(다른 기능이 알림과 함께 켠 화면은 다시 켬), 진행 중·무음 알림(Android 16의 무음 표시 포함), 시스템이 기존 알림을 다시 보낸 것, 끈 앱, 사용이 일시정지된 앱, 방해 금지 모드, 소리 안 내는 묶음 알림, '한 번만 알림' 업데이트, 전화·알람·전체 화면 알림(시스템이 직접 켬), 잠금화면에 숨긴 알림, 통화 중, 방해하지 않을 시간, 간격(기본 5초), 같은 앱 간격(기본 없음), 엎어 둠(가속도 센서), 주머니 속(근접·조도 센서, 기본 꺼짐).
+켜지 않는 경우: 쉬는 중, 화면이 켜져 있음(다른 기능이 알림과 함께 켠 화면은 다시 켬), 진행 중·무음 알림(Android 16의 무음 표시 포함), 시스템이 기존 알림을 다시 보낸 것, 끈 앱, 사용이 일시정지된 앱, 방해 금지 모드, 소리 안 내는 묶음 알림, '한 번만 알림' 업데이트, 전화·알람·전체 화면 알림(시스템이 직접 켬), 잠금화면에 숨긴 알림, 통화 중(전화 수신·통화, 통화 음성이 나오는 인터넷 통화), 30초 넘게 늦게 받은 알림, 방해하지 않을 시간, 간격(기본 5초), 같은 앱 간격(기본 없음), 엎어 둠(가속도 센서), 주머니 속(근접·조도 센서, 기본 꺼짐).
 
 ## 구조
 
@@ -86,7 +95,7 @@ adb shell pm grant com.seooki.ddokddok.notifier android.permission.POST_NOTIFICA
 adb shell am broadcast -f 0x20 -n com.seooki.ddokddok.notifier/.PostReceiver --es case <시나리오>
 ```
 
-시나리오: `alert`, `low`, `min`, `ongoing`, `alert_once`(두 번 보내면 두 번째는 업데이트), `update`, `group_children`, `group_summary`, `call`, `secret`, `messaging`, `fullscreen`, `silent`(Android 16 무음 표시), `summary_nogroup`, `self_wake`(알림을 올리며 스스로 화면을 켜는 앱), `cancel_all`.
+시나리오: `alert`, `low`, `min`, `ongoing`, `alert_once`(두 번 보내면 두 번째는 업데이트), `update`, `group_children`, `group_summary`, `call`, `secret`, `messaging`, `fullscreen`, `silent`(Android 16 무음 표시), `summary_nogroup`, `self_wake`(알림을 올리며 스스로 화면을 켜는 앱), `comm_mode_on`·`comm_mode_off`(백그라운드 앱이 통신 모드를 잡은 상황), `cancel_all`.
 화면을 끈 뒤 보내고 `PowerManagerService`의 "Waking up ... reason=" 로그와 앱 기록(디버그 빌드: `run-as com.seooki.ddokddok cat no_backup/wake_events.tsv`)을 본다.
 
 포그라운드 서비스 알림의 재전송은 화면이 켜진 상태에서 시작해 몇 초 안에 화면을 끄고 본다.
@@ -96,6 +105,15 @@ adb shell am start -n com.seooki.ddokddok.notifier/.ForegroundRepostActivity --e
 ```
 
 ## 확인 기록
+
+2026-10-01, 0.1.4, Android 16 에뮬레이터(네트워크 차단):
+
+- 기존 18개 시나리오와 `self_wake` 다시 켜기(다른 앱이 켬 → 0.24초 뒤 끔 → 0.7초 뒤 `WAKE_REASON_WAKE_KEY`)가 그대로다. 0.1.3 릴리스 위에 덮어 설치해도 접근성 서비스가 유지되고 바로 켠다.
+- 다른 앱이 통신 모드를 잡은 상태(`MODE_IN_COMMUNICATION` 확인)에서 알림이 오면 전원 버튼 방식으로 켠다. 0.1.3은 '통화 중'으로 건너뛰었다. Android는 통화 음성이 없는 통신 모드를 6초쯤 뒤 스스로 풀어서, 오래 잡혀 있는 경우는 음성 채팅처럼 실제로 소리를 주고받을 때다.
+- 똑똑 프로세스를 15초 멈췄다 풀면 늦게 받은 알림에도 켜고(0.1.3은 기록 없이 버림), 35초면 '너무 늦게 받은 알림'으로 남긴다.
+- 진단 정보 복사에 최근 판단(묶음 알림 무음 처리, 한 번만 알림 업데이트, 진행 중 알림, 늦게 받은 시간, 다시 켜기 단계 등)이 들어간다.
+- AOD 대기 학습과 0.5초 대체는 에뮬레이터가 AOD를 지원하지 않아 단위 테스트로만 확인했다.
+- 단위 테스트 67개, 릴리스 린트 오류 0개.
 
 2026-10-01, 0.1.3, Android 16 에뮬레이터(네트워크 차단):
 
