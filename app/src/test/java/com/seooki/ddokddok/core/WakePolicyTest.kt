@@ -198,6 +198,16 @@ class WakePolicyTest {
     }
 
     @Test
+    fun `근접 센서가 비어 있으면(near == false) 어둡고 세워져 있어도 주머니 속으로 보지 않는다`() {
+        val settings = WakeSettings(skipWhenFaceDown = false, skipWhenInPocket = true)
+        // 불 꺼진 방 거치대에 비스듬히 세워둔 폰: near는 false, dark는 true, flat은 false
+        assertNull(WakePolicy.evaluatePosture(PostureFacts(near = false, dark = true, flat = false), settings))
+        // 근접 센서가 가려져 있으면 어두움/각도와 상관없이 주머니 속으로 본다
+        assertEquals(SkipReason.IN_POCKET, WakePolicy.evaluatePosture(PostureFacts(near = true, dark = true, flat = false), settings))
+    }
+
+
+    @Test
     fun `AOD 등 화면이 켜진 상태에서는 설정에 따라 기본 방식을 쓴다`() {
         val avoiding = WakeSettings(method = WakeMethod.MENU_KEY, avoidMenuKeyWhenDozing = true)
         assertEquals(WakeMethod.WAKE_LOCK, WakePolicy.chooseMethod(avoiding, keyReachesLockScreen = true))

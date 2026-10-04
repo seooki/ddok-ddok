@@ -77,6 +77,7 @@ class WakeController(
     private val lastWakeByApp = HashMap<String, Long>()
     private var lastWakeElapsedMs: Long? = null
     private var inFlight: Job? = null
+    private var pendingWake: PendingWake? = null
     private var autoOff: Job? = null
 
     // 화면이 꺼지거나 잠금이 풀리면 자동 끄기를 취소한다.
@@ -95,6 +96,12 @@ class WakeController(
         val displayOff: Boolean,
         /** 받았을 때 알림과 함께 다른 쪽이 켠 화면이 켜져 있었는지. */
         val wokenByOther: Boolean,
+    )
+
+    private class PendingWake(
+        val key: String,
+        val facts: NotificationFacts,
+        val arrival: Arrival,
     )
 
     /** 연결될 때마다 처음부터 다시 기억한다. 알림 내용이 아니라 키만 받아 온다. */
@@ -136,7 +143,7 @@ class WakeController(
      */
     private fun isWokenByOther(postedMs: Long, nowMs: Long): Boolean =
         ForeignWake.detect(tracker.screenOnSinceMs(nowMs), postedMs, nowMs, waker.lastTriggerAtMs) &&
-            keyguardManager.isKeyguardLocked && keyguardManager.isDeviceLocked
+            keyguardManager.isKeyguardLocked
 
     /**
      * 방해 금지 모드에 막혔던 알림이 곧바로 풀렸으면 다시 판단한다. 연락처 예외처럼 시스템이 확인을 늦게 마치는
@@ -181,10 +188,16 @@ class WakeController(
                 }
             }
             Decision.Wake -> {
-                // 요약·개별 알림이 한꺼번에 오면 한 번만 켠다.
                 if (inFlight?.isActive == true) {
-                    note(facts.packageName, "BUSY")
-                    record(facts.packageName, EventOutcome.Skipped(SkipReason.BUSY))
+                    if (!waker.isScreenOn) {
+                        // 앞선 알림이 아직 화면을 켜지 못한 상태(센서 검사 등)라면 후속 알림을 보관한다.
+                        // 앞선 알림이 화면을 켜지 못하고 취소되면 이 알림으로 켠다.
+                        pendingWake = PendingWake(key, facts, arrival)
+                        note(facts.packageName, "PENDING_WAKE")
+                    } else {
+                        note(facts.packageName, "BUSY")
+                        record(facts.packageName, EventOutcome.Skipped(SkipReason.BUSY))
+                    }
                     return
                 }
                 val shown = when {
@@ -193,10 +206,26 @@ class WakeController(
                     else -> "밝음"
                 }
                 note(facts.packageName, "WAKE 받을때화면=$shown" + lateSuffix(facts))
-                inFlight = scope.launch { wake(facts.packageName, current, arrival) }
+                inFlight = scope.launch { runWakePipeline(key, facts, current, arrival) }
             }
         }
     }
+
+    private suspend fun runWakePipeline(key: String, facts: NotificationFacts, current: WakeSettings, arrival: Arrival) {
+        try {
+            wake(facts.packageName, current, arrival)
+        } finally {
+            val pending = pendingWake
+            pendingWake = null
+            if (pending != null && !waker.isScreenOn) {
+                note(pending.facts.packageName, "RETRY_FROM_PENDING")
+                inFlight = scope.launch {
+                    runWakePipeline(pending.key, pending.facts, settings.current, pending.arrival)
+                }
+            }
+        }
+    }
+
 
     /** 방해 금지 예외가 곧 확인될 수 있어서, 그 시간이 지나도록 풀리지 않았을 때만 기록한다. */
     private fun skipForDnd(key: String, facts: NotificationFacts) {
@@ -248,6 +277,10 @@ class WakeController(
                 } else {
                     note(packageName, "WAIT 건너뜀(AOD가 계속 떠 있는 폰)")
                 }
+            }
+            if (rewoke && waker.isScreenOn) {
+                // 방금 다른 쪽이 켠 화면을 껐는데 시스템 잔상이나 애니메이션으로 아직 켜져 있으면 꺼질 때까지 확실히 기다린다.
+                waker.awaitScreenOff()
             }
             if (waker.isScreenOn) {
                 note(packageName, "켜져있어서둠")

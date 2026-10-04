@@ -22,8 +22,8 @@ android {
         // 37로 올리기 전에 기본 방식(ACQUIRE_CAUSES_WAKEUP)이 TURN_SCREEN_ON 권한 없이도 동작하는지 확인해야 한다.
         // AOSP는 이 권한 요구를 targetSdk 기준으로 켜도록 예고해 두었다.
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.1.4"
+        versionCode = 6
+        versionName = "0.1.5"
     }
 
     signingConfigs {

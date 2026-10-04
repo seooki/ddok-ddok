@@ -43,8 +43,15 @@ data class PostureFacts(
     /** 바닥에 눕혀 놓은 자세인지(가속도 센서). 주머니 속이면 대개 세워져 있다. */
     val flat: Boolean? = null,
 ) {
-    /** 근접 센서가 가까움을 알리거나, 어두운데 세워져 있으면 주머니·가방 속으로 본다. */
-    val looksInPocket: Boolean get() = near == true || (dark == true && flat == false)
+    /**
+     * 근접 센서가 가까움을 알리거나, 근접 센서가 없는 기기에서 어두운데 세워져 있으면 주머니·가방 속으로 본다.
+     * 근접 센서가 있는 기기에서 근접 센서가 비어 있으면(near == false) 어둡고 세워져 있어도(불 꺼진 방 거치대 등) 주머니로 보지 않는다.
+     */
+    val looksInPocket: Boolean
+        get() = when {
+            near != null -> near == true
+            else -> dark == true && flat == false
+        }
 }
 
 /** 판단에 필요한 시각. 경과 시간은 부팅 후 시간(elapsedRealtime)이라 시계를 바꿔도 흔들리지 않는다. */

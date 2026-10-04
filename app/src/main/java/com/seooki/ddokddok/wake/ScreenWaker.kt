@@ -76,7 +76,19 @@ class ScreenWaker(context: Context) {
         while (isScreenOn && SystemClock.elapsedRealtime() < deadline) delay(POLL_INTERVAL_MS)
         if (isScreenOn) return false
         awaitDisplaySettled()
-        return true
+        // 화면이 꺼진 직후 바로 켜면 카메라 HAL과 Keyguard가 이전 세션을 닫기 전에 새 요청이 들어가
+        // 생체인증(얼굴 인식)이 시작되지 않거나 취소된다. 안정화될 시간을 잠깐 둔다.
+        delay(REWAKE_STABILIZE_MS)
+        return !isScreenOn
+    }
+
+    /** 화면이 완전히 꺼질 때까지 기다린다. 꺼졌으면 true다. */
+    suspend fun awaitScreenOff(timeoutMs: Long = REWAKE_OFF_TIMEOUT_MS): Boolean {
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
+        while (isScreenOn && SystemClock.elapsedRealtime() < deadline) {
+            delay(POLL_INTERVAL_MS)
+        }
+        return !isScreenOn
     }
 
     /** 켜기 신호만 보낸다. 신호를 못 보냈으면 그 이유를, 보냈으면 null을 돌려준다. */
@@ -93,6 +105,10 @@ class ScreenWaker(context: Context) {
 
     /** [method]로 켜 보고, 안 켜지면 [allowFallback]일 때 기본 방식으로 한 번 더 켠다. */
     suspend fun wake(method: WakeMethod, allowFallback: Boolean): WakeResult {
+        // 화면이 꺼지는 과도기 상태에서 메뉴 키를 보내면 시스템이 거절하므로 비대화형이 될 때까지 짧게 대기한다.
+        if (method == WakeMethod.MENU_KEY && isScreenOn) {
+            awaitScreenOff(300L)
+        }
         // 화면이 완전히 꺼져 있으면 메뉴 키는 곧바로 켠다. AOD·알림 팝업이 떠 있으면 메뉴 키가 그쪽으로 가서
         // 켜지지 않을 때가 많으니, 짧게만 확인하고 대체 방식으로 넘어가 늦게 켜지지 않게 한다.
         val verifyMs = if (method == WakeMethod.MENU_KEY && !isDisplayOff) QUICK_VERIFY_MS else VERIFY_TIMEOUT_MS
@@ -143,9 +159,10 @@ class ScreenWaker(context: Context) {
         const val SCREEN_WAKE_LOCK_TAG = "ddokddok:screen"
         const val SCREEN_WAKE_LOCK_MS = 1_000L
         const val VERIFY_TIMEOUT_MS = 1_000L
-        const val QUICK_VERIFY_MS = 500L
+        const val QUICK_VERIFY_MS = 800L
         const val SETTLE_TIMEOUT_MS = 1_000L
-        const val REWAKE_OFF_TIMEOUT_MS = 1_000L
+        const val REWAKE_OFF_TIMEOUT_MS = 1_500L
+        const val REWAKE_STABILIZE_MS = 250L
         const val POLL_INTERVAL_MS = 50L
         val SETTLED_STATES = setOf(Display.STATE_OFF, Display.STATE_DOZE, Display.STATE_DOZE_SUSPEND)
     }
